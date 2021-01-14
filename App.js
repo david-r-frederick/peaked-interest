@@ -11,7 +11,7 @@ function TabNavigator() {
 	return (
 		<Tab.Navigator initialRouteName="Runs">
 			<Tab.Screen name="Leaderboard" component={LeaderboardScreen} />
-			<Tab.Screen name="Runs" component={NewRunScreen} />
+			<Tab.Screen name="Trails" component={NewRunScreen} />
 			<Tab.Screen name="My History" component={MyHistoryScreen} />
 		</Tab.Navigator>
 	);
@@ -21,7 +21,7 @@ export default function App() {
 	return (
 		<NavigationContainer>
 			<Stack.Navigator>
-				<Stack.Screen name="Runs" component={TabNavigator} />
+				<Stack.Screen name="Trails" component={TabNavigator} />
 				<Stack.Screen name="Record Run" component={RecordScreen} />
 			</Stack.Navigator>
 		</NavigationContainer>
