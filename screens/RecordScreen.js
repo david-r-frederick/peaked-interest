@@ -6,6 +6,9 @@ import Entypo from 'react-native-vector-icons/Entypo';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import { EasyIcon, MediumIcon, HardIcon } from '../difficultyIcons/difficultyIcons';
 import { Stopwatch } from 'react-native-stopwatch-timer';
+import firebase from 'firebase';
+import axios from 'axios';
+import { useEffect } from 'react';
 
 function RecordButton({ title, width, paddingLeft, onPress }) {
     return (
@@ -20,6 +23,8 @@ export function RecordScreen({ route, navigation }) {
     const [currentlyRecording, setCurrentlyRecording] = useState(false);
     const [totalDuration, setTotalDuration] = useState(0);
     const [runStarted, setRunStarted] = useState(false);
+    const [startTime, setStartTime] = useState('');
+    const [temperature, setTemperature] = useState('');
 
     const { name, difficulty } = route.params;
 
@@ -42,17 +47,33 @@ export function RecordScreen({ route, navigation }) {
                     onPress={() => {
                         setCurrentlyRecording(false);
                         setTotalDuration(duration);
-                        navigation.navigate('My History', {
-                            personName: 'David',
-                            trailName: name,
-                            difficulty,
-                            topSpeed: 'Top Speed',
-                            totalDuration,
-                            startTime: 'start time',
-                            temperature: 'temperature',
-                            distance: 'distance',
-                            verticalDrop: 'vertical drop',
+                        const today = new Date();
+                        const dd = String(today.getDate()).padStart(2, '0');
+                        const mm = String(today.getMonth() + 1).padStart(2, '0');
+                        const yyyy = today.getFullYear();
+                        const date = `${mm}/${dd}/${yyyy}`;
+
+                        let hours = today.getHours();
+                        let minutes = today.getMinutes();
+                        const ampm = hours >= 12 ? 'pm' : 'am';
+                        hours = hours % 12;
+                        hours = hours ? hours : 12;
+                        minutes = minutes < 10 ? '0' + minutes : minutes;
+                        const endTime = `${hours}:${minutes} ${ampm}`;
+
+                        firebase.firestore().collection('runs').add({
+                            trailId: name,
+                            userName: 'David',
+                            date,
+                            startTime,
+                            endTime,
+                            duration,
+                            temperature,
+                            verticalDrop: '1200ft',
                         });
+                        // .then(() => {
+                        //     navigation.navigate('My History');
+                        // });
                     }}
                 >
                     <Ionicon name="stop-circle-outline" color="black" size={40} backgroundColor="white" />
@@ -65,40 +86,62 @@ export function RecordScreen({ route, navigation }) {
 
     const renderRecordControls = () => {
         if (currentlyRecording) {
-            return <View style={styles.resolveContainer}>
-                <TouchableOpacity style={styles.resolveBtn} onPress={() => setCurrentlyRecording(false)}>
-                    <Ionicon name="pause-circle-outline" color="black" size={40} backgroundColor="white" color="blue" />
-                    <Text style={styles.resolveLabel}>Pause</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={{ ...styles.resolveBtn, marginLeft: 10 }}
-                    onPress={() => {
-                        setCurrentlyRecording(false);
-                        setTotalDuration(duration);
-                        navigation.navigate('My History');
-                    }}
-                >
-                    <Ionicon name="stop-circle-outline" color="black" size={40} backgroundColor="white" />
-                    <Text style={styles.resolveLabel}>Finish</Text>
-                </TouchableOpacity>
-            </View>;
+            return (
+                <View style={styles.resolveContainer}>
+                    <TouchableOpacity style={styles.resolveBtn} onPress={() => setCurrentlyRecording(false)}>
+                        <Ionicon
+                            name="pause-circle-outline"
+                            color="black"
+                            size={40}
+                            backgroundColor="white"
+                            color="blue"
+                        />
+                        <Text style={styles.resolveLabel}>Pause</Text>
+                    </TouchableOpacity>
+                    {renderFinishButton()}
+                </View>
+            );
         } else {
-            return <View style={styles.resolveContainer}>
-                <RecordButton
-                    title={runStarted ? 'Resume' : 'Start'}
-                    paddingLeft={runStarted ? 2 : 15}
-                    width={runStarted ? 145 : 300}
-                    onPress={() => {
-                        setCurrentlyRecording(true);
-                        if (!runStarted) {
-                            setRunStarted(true);
-                        }
-                    }}
-                />
-                {renderFinishButton()}
-            </View>;
+            return (
+                <View style={styles.resolveContainer}>
+                    <RecordButton
+                        title={runStarted ? 'Resume' : 'Start'}
+                        paddingLeft={runStarted ? 2 : 15}
+                        width={runStarted ? 145 : 300}
+                        onPress={() => {
+                            setCurrentlyRecording(true);
+                            if (!runStarted) {
+                                const today = new Date();
+                                let hours = today.getHours();
+                                let minutes = today.getMinutes();
+                                const ampm = hours >= 12 ? 'pm' : 'am';
+                                hours = hours % 12;
+                                hours = hours ? hours : 12;
+                                minutes = minutes < 10 ? '0' + minutes : minutes;
+                                const startTimeString = `${hours}:${minutes} ${ampm}`;
+                                setStartTime(startTimeString);
+                                setRunStarted(true);
+                            }
+                        }}
+                    />
+                    {renderFinishButton()}
+                </View>
+            );
         }
     };
+
+    useEffect(() => {
+        axios
+            .get(
+                `https://api.openweathermap.org/data/2.5/onecall?lat=39.5792&lon=105.9347&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
+            )
+            .then((response) => {
+                setTemperature(`${response.data.current.temp} °F`);
+            })
+            .catch((err) => {
+                alert(err.message);
+            });
+    }, []);
 
     return (
         <View style={styles.screen}>
@@ -114,7 +157,7 @@ export function RecordScreen({ route, navigation }) {
                     data={[
                         {
                             label: 'Current Temperature',
-                            value: '2C',
+                            value: `${temperature}`,
                         },
                         {
                             label: 'Vertical Drop',
