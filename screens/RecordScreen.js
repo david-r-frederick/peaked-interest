@@ -9,6 +9,7 @@ import { Stopwatch } from 'react-native-stopwatch-timer';
 import firebase from 'firebase';
 import axios from 'axios';
 import { useEffect } from 'react';
+import { Barometer } from 'expo-sensors';
 
 function RecordButton({ title, width, paddingLeft, onPress }) {
     return (
@@ -25,8 +26,22 @@ export function RecordScreen({ route, displayName, navigation }) {
     const [runStarted, setRunStarted] = useState(false);
     const [startTime, setStartTime] = useState('');
     const [temperature, setTemperature] = useState('');
+    const [currentPressure, setCurrentPressure] = useState(0);
+    const [startAltitude, setStartAltitude] = useState(0);
 
     const { name, difficulty } = route.params;
+
+    useEffect(() => {
+        Barometer.addListener(({ pressure }) => {
+            setCurrentPressure(pressure);
+        });
+    }, []);
+
+    useEffect(() => {
+        if (currentlyRecording) {
+            setStartAltitude(hPaToFeet(currentPressure));
+        }
+    }, [currentlyRecording]);
 
     const renderInfoListItem = ({ item }) => {
         return (
@@ -61,24 +76,22 @@ export function RecordScreen({ route, displayName, navigation }) {
                         minutes = minutes < 10 ? '0' + minutes : minutes;
                         const endTime = `${hours}:${minutes} ${ampm}`;
 
-                        firebase
-                            .firestore()
-                            .collection('runs')
-                            .add({
-                                trailId: name,
-                                userName: displayName,
-                                date,
-                                startTime,
-                                endTime,
-                                duration,
-                                temperature,
-                                verticalDrop: '1200ft',
-                            })
-                            .then(() => {
-                                navigation.navigate('My History', {
-                                    displayName,
-                                });
-                            });
+                        let endAltitude = hPaToFeet(currentPressure);
+                        let verticalDrop = startAltitude - endAltitude;
+
+                        firebase.firestore().collection('runs').add({
+                            trailId: name,
+                            userName: displayName,
+                            date,
+                            startTime,
+                            endTime,
+                            duration,
+                            temperature,
+                            verticalDrop: `${verticalDrop}ft`,
+                        })
+                        // .then(() => {
+                        //     navigation.navigate('My History');
+                        // });
                     }}
                 >
                     <Ionicon name="stop-circle-outline" color="black" size={40} backgroundColor="white" />
@@ -138,7 +151,7 @@ export function RecordScreen({ route, displayName, navigation }) {
     useEffect(() => {
         axios
             .get(
-                `https://api.openweathermap.org/data/2.5/onecall?lat=39.5792&lon=105.9347&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
+                `https://api.openweathermap.org/data/2.5/onecall?lat=39.5791544&lon=-105.9414672&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
             )
             .then((response) => {
                 setTemperature(`${response.data.current.temp} °F`);
@@ -165,8 +178,12 @@ export function RecordScreen({ route, displayName, navigation }) {
                             value: `${temperature}`,
                         },
                         {
-                            label: 'Vertical Drop',
-                            value: '1261 ft',
+                            label: 'Current Pressure',
+                            value: currentPressure,
+                        },
+                        {
+                            label: 'Start Altitude',
+                            value: startAltitude,
                         },
                     ]}
                     renderItem={renderInfoListItem}
@@ -179,6 +196,10 @@ export function RecordScreen({ route, displayName, navigation }) {
             </View>
         </View>
     );
+}
+
+function hPaToFeet(pressure) {
+    return 145366.45 * (1 - Math.pow(pressure / 1013.25, 0.190284));
 }
 
 const styles = StyleSheet.create({
