@@ -61,19 +61,24 @@ export function RecordScreen({ route, displayName, navigation }) {
                         minutes = minutes < 10 ? '0' + minutes : minutes;
                         const endTime = `${hours}:${minutes} ${ampm}`;
 
-                        firebase.firestore().collection('runs').add({
-                            trailId: name,
-                            userName: displayName,
-                            date,
-                            startTime,
-                            endTime,
-                            duration,
-                            temperature,
-                            verticalDrop: '1200ft',
-                        })
-                        // .then(() => {
-                        //     navigation.navigate('My History');
-                        // });
+                        firebase
+                            .firestore()
+                            .collection('runs')
+                            .add({
+                                trailId: name,
+                                userName: displayName,
+                                date,
+                                startTime,
+                                endTime,
+                                duration,
+                                temperature,
+                                verticalDrop: '1200ft',
+                            })
+                            .then(() => {
+                                navigation.navigate('My History', {
+                                    displayName,
+                                });
+                            });
                     }}
                 >
                     <Ionicon name="stop-circle-outline" color="black" size={40} backgroundColor="white" />

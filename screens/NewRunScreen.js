@@ -155,7 +155,7 @@ export function NewRunScreen({ navigation }) {
                         onPress={() => navigation.navigate('Record Run', item)}
                         underlayColor="lightgray"
                     >
-                        <RunItem borderTop={index === 0} item={item}></RunItem>
+                        <RunItem borderTop={index === 0} item={item} />
                     </TouchableHighlight>
                 )}
                 renderSectionHeader={({ section }) => <Text style={styles.sectionHeader}>{section.title}</Text>}
