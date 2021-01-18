@@ -7,6 +7,11 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useEffect } from 'react';
 import firebase from 'firebase';
 import axios from 'axios';
+import {NativeModules} from 'react-native';
+// import Barometer from 'react-native-barometer';
+
+// Only gives pressure, not altitude
+// import { Barometer } from 'expo-sensors';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -15,6 +20,7 @@ function TabNavigator({ route, navigation, temperature }) {
     return (
         <React.Fragment>
             <View style={styles.widget}>
+                <Text style={styles.weatherText}>Keystone, CO</Text>
                 <Text style={styles.weatherText}>Current Temperature: {temperature}</Text>
             </View>
             <Tab.Navigator initialRouteName="Runs">
@@ -30,6 +36,7 @@ function TabNavigator({ route, navigation, temperature }) {
 
 export default function App() {
     const [temperature, setTemperature] = React.useState('something else');
+    const [user, setUser] = React.useState(null);
 
     useEffect(() => {
         if (!firebase.apps.length) {
@@ -44,6 +51,12 @@ export default function App() {
             });
         }
 
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                setUser(user);
+            }
+        });
+
         axios
             .get(
                 `https://api.openweathermap.org/data/2.5/onecall?lat=39.5792&lon=105.9347&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
@@ -54,18 +67,29 @@ export default function App() {
             .catch((err) => {
                 alert(err.message);
             });
+
+        //Produces error
+        //TypeError: null is not an object (evaluating 'RNBarometer.startObserving')
+        //Could be due to using expo-cli and not actually being hosted on phone?
+        // Barometer.watch((payload) => {
+        //     console.log(payload);
+        // }).catch((err) => {
+        //     console.log(err);
+        // });
     }, []);
 
     return (
         <NavigationContainer>
             <Stack.Navigator>
                 <Stack.Screen name="Unregistered">
-                  {(props) => <Unregistered {...props} />}
+                    {(props) => <Unregistered {...props} userExists={!!user} />}
                 </Stack.Screen>
                 <Stack.Screen name="Trails">
                     {(props) => <TabNavigator {...props} temperature={temperature} />}
                 </Stack.Screen>
-                <Stack.Screen name="Record Run" component={RecordScreen} />
+                <Stack.Screen name="Record Run">
+                    {(props) => <RecordScreen {...props} displayName={user.displayName} />}
+                </Stack.Screen>
             </Stack.Navigator>
         </NavigationContainer>
     );
@@ -73,15 +97,19 @@ export default function App() {
 
 const styles = StyleSheet.create({
     widget: {
-        backgroundColor: '#bbb',
+        backgroundColor: 'rgb(245, 245, 245)',
         position: 'absolute',
         bottom: 48,
         width: '100%',
         zIndex: 1000,
-        paddingVertical: 10,
-        paddingLeft: 8,
+        paddingVertical: 8,
+        paddingLeft: 12,
+        borderBottomColor: '#bbb',
+        borderTopColor: '#bbb',
+        borderBottomWidth: 1,
+        borderTopWidth: 1,
     },
     weatherText: {
-        fontSize: 16,
+        fontSize: 14,
     },
 });

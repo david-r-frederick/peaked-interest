@@ -19,7 +19,7 @@ function RecordButton({ title, width, paddingLeft, onPress }) {
     );
 }
 
-export function RecordScreen({ route, navigation }) {
+export function RecordScreen({ route, displayName, navigation }) {
     const [currentlyRecording, setCurrentlyRecording] = useState(false);
     const [totalDuration, setTotalDuration] = useState(0);
     const [runStarted, setRunStarted] = useState(false);
@@ -63,14 +63,14 @@ export function RecordScreen({ route, navigation }) {
 
                         firebase.firestore().collection('runs').add({
                             trailId: name,
-                            userName: 'David',
+                            userName: displayName,
                             date,
                             startTime,
                             endTime,
                             duration,
                             temperature,
                             verticalDrop: '1200ft',
-                        });
+                        })
                         // .then(() => {
                         //     navigation.navigate('My History');
                         // });

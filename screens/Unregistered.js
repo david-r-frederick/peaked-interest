@@ -3,20 +3,14 @@ import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Input } from 'react-native-elements';
 import firebase from 'firebase';
 
-export const Unregistered = ({ navigation }) => {
+export const Unregistered = ({ navigation, userExists }) => {
     const [name, setName] = React.useState('');
 
     React.useEffect(() => {
-        if (firebase.apps.length) {
-            firebase.auth().onAuthStateChanged((user) => {
-                if (user) {
-                    navigation.navigate('Trails');
-                } else {
-                    console.log('User is signed out.');
-                }
-            });
-        }
-    }, [firebase.apps.length]);
+      if (userExists) {
+        navigation.navigate("Trails");
+      }
+    }, [userExists]);
 
     return (
         <View style={styles.space}>

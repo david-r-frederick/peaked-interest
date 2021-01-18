@@ -1,7 +1,13 @@
 import * as React from 'react';
 import { Text, View, StyleSheet } from 'react-native';
+import firebase from 'firebase';
 
 export function MyHistoryScreen() {
+
+  React.useEffect(() => {
+    
+  }, []);
+
 	return (
 		<View style={styles.screen}>
 			<Text>My Run History!</Text>
