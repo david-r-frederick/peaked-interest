@@ -20,7 +20,7 @@ function RecordButton({ title, width, paddingLeft, onPress }) {
     );
 }
 
-export function RecordScreen({ route, displayName, navigation }) {
+export function RecordScreen({ route, userId, displayName, navigation }) {
     const [currentlyRecording, setCurrentlyRecording] = useState(false);
     const [totalDuration, setTotalDuration] = useState(0);
     const [runStarted, setRunStarted] = useState(false);
@@ -79,19 +79,27 @@ export function RecordScreen({ route, displayName, navigation }) {
                         let endAltitude = hPaToFeet(currentPressure);
                         let verticalDrop = startAltitude - endAltitude;
 
-                        firebase.firestore().collection('runs').add({
-                            trailId: name,
-                            userName: displayName,
-                            date,
-                            startTime,
-                            endTime,
-                            duration,
-                            temperature,
-                            verticalDrop: `${verticalDrop}ft`,
-                        })
-                        // .then(() => {
-                        //     navigation.navigate('My History');
-                        // });
+                        const fs = firebase.firestore();
+
+                        fs.collection('runs')
+                            .add({
+                                trailId: name,
+                                userId,
+                                userName: displayName,
+                                date,
+                                startTime,
+                                endTime,
+                                duration,
+                                temperature,
+                                difficulty,
+                                verticalDrop: `${verticalDrop.toFixed(2)}ft`,
+                            })
+                            .then(() => {
+                                navigation.navigate('My History', {
+                                    userId,
+                                    displayName,
+                                });
+                            });
                     }}
                 >
                     <Ionicon name="stop-circle-outline" color="black" size={40} backgroundColor="white" />
