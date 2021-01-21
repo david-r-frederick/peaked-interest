@@ -4,12 +4,12 @@ import { Text, View, StyleSheet } from 'react-native';
 import { FlatList, TouchableOpacity } from 'react-native-gesture-handler';
 import Entypo from 'react-native-vector-icons/Entypo';
 import Ionicon from 'react-native-vector-icons/Ionicons';
-import { EasyIcon, MediumIcon, HardIcon } from '../difficultyIcons/difficultyIcons';
+import { EasyIcon, MediumIcon, HardIcon } from '../components/difficultyIcons/difficultyIcons';
 import { Stopwatch } from 'react-native-stopwatch-timer';
 import firebase from 'firebase';
-import axios from 'axios';
 import { useEffect } from 'react';
 import { Barometer } from 'expo-sensors';
+import { combineDurations } from '../Utility';
 
 function RecordButton({ title, width, paddingLeft, onPress }) {
     return (
@@ -20,12 +20,11 @@ function RecordButton({ title, width, paddingLeft, onPress }) {
     );
 }
 
-export function RecordScreen({ route, userId, displayName, navigation, updateRoutesCount, userRoutesQuantity }) {
+export function RecordScreen({ route, userId, displayName, navigation, updateRoutesCount, temperature }) {
     const [currentlyRecording, setCurrentlyRecording] = useState(false);
     const [totalDuration, setTotalDuration] = useState(0);
     const [runStarted, setRunStarted] = useState(false);
     const [startTime, setStartTime] = useState('');
-    const [temperature, setTemperature] = useState('');
     const [currentPressure, setCurrentPressure] = useState(0);
     const [startAltitude, setStartAltitude] = useState(0);
     const { name, difficulty, length } = route.params;
@@ -80,70 +79,55 @@ export function RecordScreen({ route, userId, displayName, navigation, updateRou
 
                         const fs = firebase.firestore();
 
-                        fs.collection('runs')
-                            .add({
-                                trailId: name,
-                                userId,
-                                userName: displayName,
-                                date,
-                                startTime,
-                                endTime,
-                                duration,
-                                temperature,
-                                difficulty,
-                                verticalDrop: `${verticalDrop.toFixed(2)}ft`,
-                            })
-                            .then(() => {
-                                const userColl = fs.collection('users');
-                                userColl
-                                    .doc(userId)
-                                    .get()
-                                    .then((doc) => {
-                                        const document = doc.data();
-                                        const oldTotalDurationSplit = document.totalDuration
-                                            .split(':')
-                                            .map((el) => +el);
-                                        const newTotalDurationSplit = duration.split(':').map((el) => +el);
-                                        newTotalDurationSplit.forEach((num, index) => {
-                                            oldTotalDurationSplit[index] += num;
-                                        });
-                                        for (let i = 2; i > 0; i--) {
-                                            if (oldTotalDurationSplit[i] >= 60) {
-                                                oldTotalDurationSplit[i - 1] += Math.floor(
-                                                    oldTotalDurationSplit[i] / 60
-                                                );
-                                                oldTotalDurationSplit[i] = oldTotalDurationSplit[i] % 60;
+                        updateRoutesCount().then(() => {
+                            console.log("TEMPERATURE UPDATED?");
+                            fs.collection('runs')
+                                .add({
+                                    trailId: name,
+                                    userId,
+                                    userName: displayName,
+                                    date,
+                                    startTime,
+                                    endTime,
+                                    duration,
+                                    temperature,
+                                    difficulty,
+                                    verticalDrop: `${verticalDrop.toFixed(2)}ft`,
+                                })
+                                .then(() => {
+                                    const userColl = fs.collection('users');
+                                    userColl
+                                        .doc(userId)
+                                        .get()
+                                        .then((doc) => {
+                                            const document = doc.data();
+                                            const newTotalDuration = combineDurations(document.totalDuration, duration);
+
+                                            let largestVerticalDrop = document.largestVerticalDrop;
+                                            if (
+                                                verticalDrop.toFixed(2) >
+                                                parseFloat(largestVerticalDrop.replace('ft', ''))
+                                            ) {
+                                                largestVerticalDrop = `${verticalDrop.toFixed(2)}ft`;
                                             }
-                                        }
-                                        const newTotalDuration = oldTotalDurationSplit
-                                            .map((n) => {
-                                                if (n < 10) {
-                                                    return `0${n}`;
-                                                } else {
-                                                    return `${n}`;
-                                                }
-                                            })
-                                            .join(':');
 
-                                        const largestVerticalDrop = verticalDrop.toFixed(2) > parseFloat(document.largestVerticalDrop.replace('ft', '')) ? `${verticalDrop.toFixed(2)}ft` : document.largestVerticalDrop;
-
-                                        userColl
-                                            .doc(userId)
-                                            .set({
-                                                ...document,
-                                                totalDistance:
-                                                    parseFloat(document.totalDistance.replace('mi', '')) +
-                                                    length +
-                                                    'mi',
-                                                totalDuration: newTotalDuration,
-                                                largestVerticalDrop,
-                                            })
-                                            .then(() => {
-                                                updateRoutesCount(userRoutesQuantity + 1);
-                                                navigation.navigate('My History');
-                                            });
-                                    });
-                            });
+                                            userColl
+                                                .doc(userId)
+                                                .set({
+                                                    ...document,
+                                                    totalDistance:
+                                                        parseFloat(document.totalDistance.replace('mi', '')) +
+                                                        length +
+                                                        'mi',
+                                                    totalDuration: newTotalDuration,
+                                                    largestVerticalDrop,
+                                                })
+                                                .then(() => {
+                                                    navigation.navigate('My History');
+                                                });
+                                        });
+                                });
+                        });
                     }}
                 >
                     <Ionicon name="stop-circle-outline" color="black" size={40} backgroundColor="white" />
@@ -200,19 +184,6 @@ export function RecordScreen({ route, userId, displayName, navigation, updateRou
         }
     };
 
-    useEffect(() => {
-        axios
-            .get(
-                `https://api.openweathermap.org/data/2.5/onecall?lat=39.5791544&lon=-105.9414672&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
-            )
-            .then((response) => {
-                setTemperature(`${response.data.current.temp} °F`);
-            })
-            .catch((err) => {
-                alert(err.message);
-            });
-    }, []);
-
     return (
         <View style={styles.screen}>
             <View style={styles.header}>
@@ -231,7 +202,7 @@ export function RecordScreen({ route, userId, displayName, navigation, updateRou
                         },
                         {
                             label: 'Current Pressure',
-                            value: currentPressure,
+                            value: currentPressure.toFixed(2),
                         },
                         {
                             label: 'Start Altitude',

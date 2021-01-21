@@ -2,6 +2,7 @@ import * as React from 'react';
 import { View, StyleSheet, FlatList, Text, TouchableHighlight } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import firebase from 'firebase';
+import { ChevronRight } from '../components/Chevrons';
 
 export function LeaderboardScreen({ route, navigation, userId }) {
     const [sortBy, setSortBy] = React.useState('topSpeed');
@@ -76,6 +77,12 @@ export function LeaderboardScreen({ route, navigation, userId }) {
                 keyExtractor={(item) => item.id}
                 data={allUsers}
                 renderItem={({ item, index }) => {
+                    const backgroundColorMap = {
+                      0: 'gold',
+                      1: 'silver',
+                      2: 'bronze',
+                    }
+                    let backgroundColor = backgroundColorMap[index] || '#ddd';
                     return (
                         <View style={{ ...styles.line, borderTopWidth: index === 0 ? 1 : 0 }}>
                             <TouchableHighlight
@@ -96,14 +103,7 @@ export function LeaderboardScreen({ route, navigation, userId }) {
                                         <Text
                                             style={{
                                                 ...styles.leaderboardRank,
-                                                backgroundColor:
-                                                    index === 0
-                                                        ? 'gold'
-                                                        : index === 1
-                                                        ? 'silver'
-                                                        : index === 2
-                                                        ? 'bronze'
-                                                        : '#ddd',
+                                                backgroundColor,
                                             }}
                                         >
                                             {index + 1}
@@ -112,7 +112,7 @@ export function LeaderboardScreen({ route, navigation, userId }) {
                                     </View>
                                     <View style={styles.leaderboardNameAndRank}>
                                         <Text style={styles.leaderboardItemLabel}>{item[sortBy]}</Text>
-                                        <View style={styles.rightArrow}></View>
+                                        <ChevronRight />
                                     </View>
                                 </View>
                             </TouchableHighlight>
@@ -130,16 +130,14 @@ const styles = StyleSheet.create({
         width: '100%',
         height: 50,
     },
-    pickerOption: {
-    },
     pickerWrapper: {
-      borderWidth: 1,
-      borderColor: 'blue',
-      borderRadius: 5,
-      width: '90%',
-      marginHorizontal: '5%',
-      marginVertical: 5,
-      backgroundColor: '#ddd',
+        borderWidth: 1,
+        borderColor: 'blue',
+        borderRadius: 5,
+        width: '90%',
+        marginHorizontal: '5%',
+        marginVertical: 5,
+        backgroundColor: '#ddd',
     },
     leaderboardItem: {
         flexDirection: 'row',
@@ -168,15 +166,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     leaderboardNameAndRank: { flexDirection: 'row', alignItems: 'center' },
-    rightArrow: {
-        width: 10,
-        height: 10,
-        color: 'grey',
-        borderColor: 'grey',
-        borderTopWidth: 2,
-        borderRightWidth: 2,
-        transform: [{ rotate: '45deg' }],
-    },
     line: {
         borderColor: 'rgba(0, 0, 0, 0.1)',
         borderBottomWidth: 1,

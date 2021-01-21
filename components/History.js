@@ -1,25 +1,17 @@
 import * as React from 'react';
 import { Text, View, StyleSheet, SectionList } from 'react-native';
-import { EasyIcon, MediumIcon, HardIcon } from '../difficultyIcons/difficultyIcons';
-import firebase from 'firebase';
+import { IconMapper } from '../Utility';
 
 function TrailHistoryItem(props) {
     const { item } = props;
+    const IconBackgroundMapper = {
+        green: 'rgba(150, 200, 150, 0.1)',
+        blue: 'rgba(150, 150, 240, 0.1)',
+        black: 'rgba(150, 150, 150, 0.1)',
+    };
 
-    let difficultyIcon = null;
-    let backgroundColor = null;
-    if (item.difficulty) {
-        if (item.difficulty === 'green') {
-            difficultyIcon = <EasyIcon />;
-            backgroundColor = 'rgba(150, 200, 150, 0.1)';
-        } else if (item.difficulty === 'blue') {
-            difficultyIcon = <MediumIcon />;
-            backgroundColor = 'rgba(150, 150, 240, 0.1)';
-        } else {
-            difficultyIcon = <HardIcon />;
-            backgroundColor = 'rgba(150, 150, 150, 0.1)';
-        }
-    }
+    let difficultyIcon = IconMapper[item.difficulty];
+    let backgroundColor = IconBackgroundMapper[item.difficulty];
 
     return (
         <View
@@ -45,37 +37,10 @@ function TrailHistoryItem(props) {
 }
 
 export function History(props) {
-    const [trailsHistory, setTrailsHistory] = React.useState([]);
-    const [allDates, setAllDates] = React.useState([]);
-    const { displayName, userId, userRoutesQuantity } = props;
-
-    React.useEffect(() => {
-        const db = firebase.firestore().collection('runs');
-        db.get().then((snapShot) => {
-            const allTrails = [];
-            snapShot.docs.forEach((doc) => {
-                const data = doc.data();
-                if (data.userId === userId) {
-                    allTrails.push({
-                        ...data,
-                        id: doc.id,
-                    });
-                }
-            });
-            setTrailsHistory(allTrails);
-        });
-    }, [userRoutesQuantity]);
-
-    React.useEffect(() => {
-        const d = Array.from(new Set(trailsHistory.map((trailItem) => trailItem.date)));
-        setAllDates(
-            d.sort((x, y) => {
-                const d1 = new Date(x);
-                const d2 = new Date(y);
-                return d2 - d1;
-            })
-        );
-    }, [trailsHistory]);
+    const { displayName, trailsHistory } = props;
+    const allDates = Array.from(new Set(trailsHistory.map(({ date }) => date))).sort(
+        (x, y) => new Date(y) - new Date(x)
+    );
 
     return (
         <View style={styles.screen}>

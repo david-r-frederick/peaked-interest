@@ -11,7 +11,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useEffect } from 'react';
 import firebase from 'firebase';
 import axios from 'axios';
 import Entypo from 'react-native-vector-icons/Entypo';
@@ -21,17 +20,17 @@ const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function getHeaderTitle(route) {
-  const routeName = getFocusedRouteNameFromRoute(route) ?? 'Leaderboard';
+    const routeName = getFocusedRouteNameFromRoute(route) ?? 'Leaderboard';
 
-  switch (routeName) {
-    case 'My History':
-      return 'History';
-    default:
-      return routeName;
-  }
+    switch (routeName) {
+        case 'My History':
+            return 'History';
+        default:
+            return routeName;
+    }
 }
 
-function TabNavigator({ route, navigation, temperature, user, userRoutesQuantity }) {
+function TabNavigator({ temperature, user, trailsHistory }) {
     return (
         <React.Fragment>
             <View style={styles.widget}>
@@ -52,12 +51,24 @@ function TabNavigator({ route, navigation, temperature, user, userRoutesQuantity
                 <Tab.Screen
                     options={{
                         tabBarIcon: ({ color, size }) => {
-                            return <Entypo name="area-graph" color={color} size={30} />;
+                            return <Entypo name="area-graph" size={30} color={color} />;
                         },
                     }}
                     name="Trails"
                 >
-                    {(props) => <NewRunScreen {...props} temperature={temperature} />}
+                    {(props) => (
+                        <NewRunScreen
+                            {...props}
+                            mostRecents={trailsHistory
+                                .sort((x, y) => {
+                                    return new Date(y.date + ' ' + y.endTime) - new Date(x.date + ' ' + x.endTime);
+                                })
+                                .slice(0, 3)
+                                .map((trailObj) => trailObj.trailId)}
+                            userId={user.uid}
+                            temperature={temperature}
+                        />
+                    )}
                 </Tab.Screen>
                 <Tab.Screen
                     options={{
@@ -70,9 +81,10 @@ function TabNavigator({ route, navigation, temperature, user, userRoutesQuantity
                     {(props) => (
                         <MyHistoryScreen
                             {...props}
-                            userId={user.uid}
                             displayName={user.displayName}
-                            userRoutesQuantity={userRoutesQuantity}
+                            trailsHistory={trailsHistory.filter((trailObj) => {
+                                return trailObj.userId === user.uid;
+                            })}
                         />
                     )}
                 </Tab.Screen>
@@ -82,11 +94,12 @@ function TabNavigator({ route, navigation, temperature, user, userRoutesQuantity
 }
 
 export default function App() {
-    const [temperature, setTemperature] = React.useState('something else');
+    const [temperature, setTemperature] = React.useState('Unknown');
     const [user, setUser] = React.useState(null);
     const [userRoutesQuantity, setUserRoutesQuantity] = React.useState(0);
+    const [trailsHistory, setTrailsHistory] = React.useState([]);
 
-    useEffect(() => {
+    React.useEffect(() => {
         if (!firebase.apps.length) {
             firebase.initializeApp({
                 apiKey: 'AIzaSyCV62W7Aiaa1Y0KOTubkAvcQ5qCWY2N94k',
@@ -104,7 +117,9 @@ export default function App() {
                 setUser(user);
             }
         });
+    });
 
+    React.useEffect(() => {
         axios
             .get(
                 `https://api.openweathermap.org/data/2.5/onecall?lat=39.5792&lon=105.9347&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
@@ -114,8 +129,24 @@ export default function App() {
             })
             .catch((err) => {
                 alert(err.message);
+                setTemperature('Unknown');
             });
-    }, []);
+    }, [userRoutesQuantity]);
+
+    React.useEffect(() => {
+        const db = firebase.firestore().collection('runs');
+        db.get().then((snapShot) => {
+            const allTrails = [];
+            snapShot.docs.forEach((doc) => {
+                const data = doc.data();
+                allTrails.push({
+                    ...data,
+                    id: doc.id,
+                });
+            });
+            setTrailsHistory(allTrails);
+        });
+    }, [userRoutesQuantity]);
 
     return (
         <NavigationContainer>
@@ -123,29 +154,34 @@ export default function App() {
                 <Stack.Screen name="Register">
                     {(props) => <RegisterScreen {...props} userExists={!!user} />}
                 </Stack.Screen>
-                <Stack.Screen options={({ route }) => {
-                  return {
-                    title: getHeaderTitle(route)
-                  };
-                }} name="Trails">
+                <Stack.Screen
+                    options={({ route }) => {
+                        return {
+                            title: getHeaderTitle(route),
+                        };
+                    }}
+                    name="Trails"
+                >
                     {(props) => (
-                        <TabNavigator
-                            {...props}
-                            userRoutesQuantity={userRoutesQuantity}
-                            temperature={temperature}
-                            user={user}
-                        />
+                        <TabNavigator {...props} temperature={temperature} user={user} trailsHistory={trailsHistory} />
                     )}
                 </Stack.Screen>
-                <Stack.Screen name="User History">{(props) => <UserHistoryScreen {...props} />}</Stack.Screen>
+                <Stack.Screen name="User History">
+                    {(props) => <UserHistoryScreen {...props} trailsHistory={trailsHistory} />}
+                </Stack.Screen>
                 <Stack.Screen name="Record Run">
                     {(props) => (
                         <RecordScreen
                             {...props}
-                            userRoutesQuantity={userRoutesQuantity}
-                            updateRoutesCount={setUserRoutesQuantity}
+                            updateRoutesCount={() => {
+                                return new Promise((resolve, reject) => {
+                                    setUserRoutesQuantity(userRoutesQuantity + 1);
+                                    resolve();
+                                });
+                            }}
                             displayName={user.displayName}
                             userId={user.uid}
+                            temperature={temperature}
                         />
                     )}
                 </Stack.Screen>
