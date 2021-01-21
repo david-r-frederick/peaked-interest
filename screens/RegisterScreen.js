@@ -3,7 +3,7 @@ import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Input } from 'react-native-elements';
 import firebase from 'firebase';
 
-export const Register = ({ navigation, userExists }) => {
+export const RegisterScreen = ({ navigation, userExists }) => {
     const [firstName, setFirstName] = React.useState('');
     const [lastName, setLastName] = React.useState('');
 

@@ -10,5 +10,5 @@ export const MediumIcon = () => {
 };
 
 export const HardIcon = () => {
-    return <View style={{ width: 30, height: 30, backgroundColor: 'black', transform: [{ rotate: '45deg' }] }} />;
+    return <View style={{ width: 27, height: 27, backgroundColor: 'black', transform: [{ rotate: '45deg' }] }} />;
 };

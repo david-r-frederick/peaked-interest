@@ -20,7 +20,7 @@ function RecordButton({ title, width, paddingLeft, onPress }) {
     );
 }
 
-export function RecordScreen({ route, userId, displayName, navigation }) {
+export function RecordScreen({ route, userId, displayName, navigation, updateRoutesCount, userRoutesQuantity }) {
     const [currentlyRecording, setCurrentlyRecording] = useState(false);
     const [totalDuration, setTotalDuration] = useState(0);
     const [runStarted, setRunStarted] = useState(false);
@@ -28,8 +28,7 @@ export function RecordScreen({ route, userId, displayName, navigation }) {
     const [temperature, setTemperature] = useState('');
     const [currentPressure, setCurrentPressure] = useState(0);
     const [startAltitude, setStartAltitude] = useState(0);
-
-    const { name, difficulty } = route.params;
+    const { name, difficulty, length } = route.params;
 
     useEffect(() => {
         Barometer.addListener(({ pressure }) => {
@@ -95,10 +94,55 @@ export function RecordScreen({ route, userId, displayName, navigation }) {
                                 verticalDrop: `${verticalDrop.toFixed(2)}ft`,
                             })
                             .then(() => {
-                                navigation.navigate('My History', {
-                                    userId,
-                                    displayName,
-                                });
+                                const userColl = fs.collection('users');
+                                userColl
+                                    .doc(userId)
+                                    .get()
+                                    .then((doc) => {
+                                        const document = doc.data();
+                                        const oldTotalDurationSplit = document.totalDuration
+                                            .split(':')
+                                            .map((el) => +el);
+                                        const newTotalDurationSplit = duration.split(':').map((el) => +el);
+                                        newTotalDurationSplit.forEach((num, index) => {
+                                            oldTotalDurationSplit[index] += num;
+                                        });
+                                        for (let i = 2; i > 0; i--) {
+                                            if (oldTotalDurationSplit[i] >= 60) {
+                                                oldTotalDurationSplit[i - 1] += Math.floor(
+                                                    oldTotalDurationSplit[i] / 60
+                                                );
+                                                oldTotalDurationSplit[i] = oldTotalDurationSplit[i] % 60;
+                                            }
+                                        }
+                                        const newTotalDuration = oldTotalDurationSplit
+                                            .map((n) => {
+                                                if (n < 10) {
+                                                    return `0${n}`;
+                                                } else {
+                                                    return `${n}`;
+                                                }
+                                            })
+                                            .join(':');
+
+                                        const largestVerticalDrop = verticalDrop.toFixed(2) > parseFloat(document.largestVerticalDrop.replace('ft', '')) ? `${verticalDrop.toFixed(2)}ft` : document.largestVerticalDrop;
+
+                                        userColl
+                                            .doc(userId)
+                                            .set({
+                                                ...document,
+                                                totalDistance:
+                                                    parseFloat(document.totalDistance.replace('mi', '')) +
+                                                    length +
+                                                    'mi',
+                                                totalDuration: newTotalDuration,
+                                                largestVerticalDrop,
+                                            })
+                                            .then(() => {
+                                                updateRoutesCount(userRoutesQuantity + 1);
+                                                navigation.navigate('My History');
+                                            });
+                                    });
                             });
                     }}
                 >
@@ -175,7 +219,7 @@ export function RecordScreen({ route, userId, displayName, navigation }) {
                 {difficulty === 'green' ? <EasyIcon /> : difficulty === 'blue' ? <MediumIcon /> : <HardIcon />}
                 <View>
                     <Text style={styles.trailName}>{name}</Text>
-                    <Text style={styles.trailLength}>1.2 miles</Text>
+                    <Text style={styles.trailLength}>{length} miles</Text>
                 </View>
             </View>
             <View>
