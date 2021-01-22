@@ -74,14 +74,14 @@ export function LeaderboardScreen({ route, navigation, userId }) {
                 </Picker>
             </View>
             <FlatList
-                keyExtractor={(item) => item.id}
+                keyExtractor={({ userId }) => userId}
                 data={allUsers}
                 renderItem={({ item, index }) => {
                     const backgroundColorMap = {
-                      0: 'gold',
-                      1: 'silver',
-                      2: 'bronze',
-                    }
+                        0: 'gold',
+                        1: 'silver',
+                        2: 'bronze',
+                    };
                     let backgroundColor = backgroundColorMap[index] || '#ddd';
                     return (
                         <View style={{ ...styles.line, borderTopWidth: index === 0 ? 1 : 0 }}>

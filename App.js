@@ -7,7 +7,7 @@ import {
     RegisterScreen,
     UserHistoryScreen,
 } from './screens';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, LogBox } from 'react-native';
 import { NavigationContainer, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -15,6 +15,9 @@ import firebase from 'firebase';
 import axios from 'axios';
 import Entypo from 'react-native-vector-icons/Entypo';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
+import StopWatch from './components/StopWatch';
+
+LogBox.ignoreLogs(['Setting a timer']);
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -88,15 +91,15 @@ function TabNavigator({ temperature, user, trailsHistory }) {
                         />
                     )}
                 </Tab.Screen>
+                <Tab.Screen name="StopWatch" component={StopWatch} />
             </Tab.Navigator>
         </React.Fragment>
     );
 }
 
 export default function App() {
-    const [temperature, setTemperature] = React.useState('Unknown');
+    const [temperature, setTemperature] = React.useState('Loading...');
     const [user, setUser] = React.useState(null);
-    const [userRoutesQuantity, setUserRoutesQuantity] = React.useState(0);
     const [trailsHistory, setTrailsHistory] = React.useState([]);
 
     React.useEffect(() => {
@@ -131,7 +134,7 @@ export default function App() {
                 alert(err.message);
                 setTemperature('Unknown');
             });
-    }, [userRoutesQuantity]);
+    }, []);
 
     React.useEffect(() => {
         const db = firebase.firestore().collection('runs');
@@ -146,7 +149,7 @@ export default function App() {
             });
             setTrailsHistory(allTrails);
         });
-    }, [userRoutesQuantity]);
+    }, []);
 
     return (
         <NavigationContainer>
@@ -173,15 +176,10 @@ export default function App() {
                     {(props) => (
                         <RecordScreen
                             {...props}
-                            updateRoutesCount={() => {
-                                return new Promise((resolve, reject) => {
-                                    setUserRoutesQuantity(userRoutesQuantity + 1);
-                                    resolve();
-                                });
-                            }}
                             displayName={user.displayName}
                             userId={user.uid}
                             temperature={temperature}
+                            setTemperature={setTemperature}
                         />
                     )}
                 </Stack.Screen>

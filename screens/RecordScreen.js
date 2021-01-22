@@ -4,12 +4,11 @@ import { Text, View, StyleSheet } from 'react-native';
 import { FlatList, TouchableOpacity } from 'react-native-gesture-handler';
 import Entypo from 'react-native-vector-icons/Entypo';
 import Ionicon from 'react-native-vector-icons/Ionicons';
-import { EasyIcon, MediumIcon, HardIcon } from '../components/difficultyIcons/difficultyIcons';
 import { Stopwatch } from 'react-native-stopwatch-timer';
 import firebase from 'firebase';
 import { useEffect } from 'react';
 import { Barometer } from 'expo-sensors';
-import { combineDurations } from '../Utility';
+import { combineDurations, IconMapper } from '../Utility';
 
 function RecordButton({ title, width, paddingLeft, onPress }) {
     return (
@@ -20,7 +19,15 @@ function RecordButton({ title, width, paddingLeft, onPress }) {
     );
 }
 
-export function RecordScreen({ route, userId, displayName, navigation, updateRoutesCount, temperature }) {
+export function RecordScreen({
+    route,
+    userId,
+    displayName,
+    navigation,
+    updateRoutesCount,
+    temperature,
+    setTemperature,
+}) {
     const [currentlyRecording, setCurrentlyRecording] = useState(false);
     const [totalDuration, setTotalDuration] = useState(0);
     const [runStarted, setRunStarted] = useState(false);
@@ -79,8 +86,7 @@ export function RecordScreen({ route, userId, displayName, navigation, updateRou
 
                         const fs = firebase.firestore();
 
-                        updateRoutesCount().then(() => {
-                            console.log("TEMPERATURE UPDATED?");
+                        const saveToFirebase = (temp) => {
                             fs.collection('runs')
                                 .add({
                                     trailId: name,
@@ -90,44 +96,28 @@ export function RecordScreen({ route, userId, displayName, navigation, updateRou
                                     startTime,
                                     endTime,
                                     duration,
-                                    temperature,
+                                    temperature: temp,
                                     difficulty,
                                     verticalDrop: `${verticalDrop.toFixed(2)}ft`,
                                 })
                                 .then(() => {
-                                    const userColl = fs.collection('users');
-                                    userColl
-                                        .doc(userId)
-                                        .get()
-                                        .then((doc) => {
-                                            const document = doc.data();
-                                            const newTotalDuration = combineDurations(document.totalDuration, duration);
-
-                                            let largestVerticalDrop = document.largestVerticalDrop;
-                                            if (
-                                                verticalDrop.toFixed(2) >
-                                                parseFloat(largestVerticalDrop.replace('ft', ''))
-                                            ) {
-                                                largestVerticalDrop = `${verticalDrop.toFixed(2)}ft`;
-                                            }
-
-                                            userColl
-                                                .doc(userId)
-                                                .set({
-                                                    ...document,
-                                                    totalDistance:
-                                                        parseFloat(document.totalDistance.replace('mi', '')) +
-                                                        length +
-                                                        'mi',
-                                                    totalDuration: newTotalDuration,
-                                                    largestVerticalDrop,
-                                                })
-                                                .then(() => {
-                                                    navigation.navigate('My History');
-                                                });
-                                        });
+                                    navigation.navigate('My History');
                                 });
-                        });
+                        };
+
+                        axios
+                            .get(
+                                `https://api.openweathermap.org/data/2.5/onecall?lat=39.5792&lon=105.9347&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
+                            )
+                            .then((response) => {
+                                setTemperature(`${response.data.current.temp} °F`);
+                                saveToFirebase(`${response.data.current.temp} °F`);
+                            })
+                            .catch((err) => {
+                                alert(err.message);
+                                setTemperature('Unknown');
+                                saveToFirebase('Unknown');
+                            });
                     }}
                 >
                     <Ionicon name="stop-circle-outline" color="black" size={40} backgroundColor="white" />
@@ -187,7 +177,7 @@ export function RecordScreen({ route, userId, displayName, navigation, updateRou
     return (
         <View style={styles.screen}>
             <View style={styles.header}>
-                {difficulty === 'green' ? <EasyIcon /> : difficulty === 'blue' ? <MediumIcon /> : <HardIcon />}
+                {IconMapper[difficulty]}
                 <View>
                     <Text style={styles.trailName}>{name}</Text>
                     <Text style={styles.trailLength}>{length} miles</Text>
@@ -206,7 +196,7 @@ export function RecordScreen({ route, userId, displayName, navigation, updateRou
                         },
                         {
                             label: 'Start Altitude',
-                            value: startAltitude,
+                            value: startAltitude.toFixed(2),
                         },
                     ]}
                     renderItem={renderInfoListItem}
