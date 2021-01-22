@@ -116,7 +116,7 @@ export const hardRuns = [
     { name: 'Wombat Chutes', difficulty: 'black', lift: 'Montezuma Express', length: 0.25 },
 ];
 
-export const combineDurations = function (durationOne = '00:00:00', durationTwo = '12:39:40') {
+export const combineDurations = function (durationOne = '00:00:00', durationTwo = '00:00:00') {
     const durationOneSplit = durationOne.split(':').map((nStr) => parseInt(nStr));
     const durationTwoSplit = durationTwo.split(':').map((nStr) => parseInt(nStr));
     durationTwoSplit.forEach((num, index) => {

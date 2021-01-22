@@ -1,45 +1,74 @@
-import * as React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler';
 
-const StopWatch = () => {
-  const [startDisabled, setStartDisabled] = React.useState(false);
-  const [stopDisabled, setStopDisabled] = React.useState(true);
-  const [timer, setTimer] = React.useState(null);
+const StopWatch = ({ running, getTime }) => {
+    const [seconds, setSeconds] = useState(58);
+    const [minutes, setMinutes] = useState(59);
+    const [hours, setHours] = useState(0);
+    const [timer, setTimer] = useState(null);
 
-  return (
-    <View style={styles.screen}>
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>Start</Text>
-      </TouchableOpacity>
-      <TouchableOpacity>
-        <Text style={styles.buttonText}>Stop</Text>
-      </TouchableOpacity>
-      <TouchableOpacity>
-        <Text style={styles.buttonText}>Pause</Text>
-      </TouchableOpacity>
-      <Text>STOP WATCH</Text>
-    </View>
-  );
-}
+    useEffect(() => {
+        if (running) {
+            startClickedHandler();
+        } else {
+            stopClickedHandler();
+        }
+    }, [running]);
+
+    const startClickedHandler = () => {
+        const interval = setInterval(() => {
+            setSeconds((prevSeconds) => {
+                if (prevSeconds === 59) {
+                    setMinutes((prevMinutes) => {
+                        if (prevMinutes === 59) {
+                            setHours((prevHours) => {
+                                return prevHours + 1;
+                            });
+                            return 0;
+                        }
+                        return prevMinutes + 1;
+                    });
+                    return 0;
+                }
+                return prevSeconds + 1;
+            });
+        }, 1000);
+        setTimer(interval);
+    };
+
+    const stopClickedHandler = () => {
+        if (timer) {
+            clearInterval(timer);
+            setHours(0);
+            setMinutes(59);
+            setSeconds(58);
+        }
+    };
+
+    const timeFormatted = `${('0' + hours).slice(-2)}:${('0' + minutes).slice(-2)}:${('0' + seconds).slice(-2)}`;
+
+    if (getTime) {
+        getTime(timeFormatted);
+    }
+
+    return (
+        <View style={styles.container}>
+            <Text style={styles.time}>{timeFormatted}</Text>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
-  screen: {
-    width: '100%',
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'space-evenly',
-  },
-  button: {
-    backgroundColor: 'blue',
-    paddingHorizontal: 100,
-    paddingVertical: 25,
-    borderRadius: 10,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 20,
-  }
+    container: {
+        width: '100%',
+        alignItems: 'center',
+        flex: 1,
+        justifyContent: 'flex-start',
+    },
+    time: {
+      marginVertical: 15,
+      fontSize: 25
+    }
 });
 
 export default StopWatch;

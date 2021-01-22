@@ -1,40 +1,67 @@
-import * as React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, FlatList, Text, TouchableHighlight } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import firebase from 'firebase';
 import { ChevronRight } from '../components/Chevrons';
+import { combineDurations } from '../Utility';
+import firebase from 'firebase';
 
-export function LeaderboardScreen({ route, navigation, userId }) {
-    const [sortBy, setSortBy] = React.useState('topSpeed');
-    const [allUsers, setAllUsers] = React.useState([]);
+export function LeaderboardScreen({ navigation, userId }) {
+    const [sortBy, setSortBy] = useState('topSpeed');
+    const [allUsers, setAllUsers] = useState([]);
     const unitsMap = {
         topSpeed: 'mph',
         largestVerticalDrop: 'ft',
         totalDistance: 'mi',
     };
 
-    React.useEffect(() => {
+    useEffect(() => {
         firebase
             .firestore()
-            .collection('users')
+            .collection('runs')
             .get()
             .then((snapShot) => {
-                const allUsers = [];
+                let userIds = [];
+                const allRuns = [];
                 snapShot.docs.forEach((doc) => {
-                    allUsers.push({
-                        ...doc.data(),
-                        userId: doc.id,
-                    });
+                    const runObject = doc.data();
+                    allRuns.push(runObject);
+                    userIds.push(runObject.userId);
                 });
-                setAllUsers([
-                    ...allUsers.sort((x, y) => {
-                        const firstValueNoLabel = x[sortBy].replace(unitsMap[sortBy], '');
-                        const secondValueNoLabel = y[sortBy].replace(unitsMap[sortBy], '');
-                        return +secondValueNoLabel - +firstValueNoLabel;
-                    }),
-                ]);
+                userIds = [...new Set(userIds)];
+                const foo = userIds.map((userId) => {
+                    const thisUsersData = allRuns.filter((runObj) => runObj.userId === userId);
+                    const displayName = thisUsersData[0].userName;
+                    const durations = [];
+                    const verticalDrops = [];
+                    const distances = [];
+                    for (let i = 0; i < thisUsersData.length; i++) {
+                        const currentData = thisUsersData[i];
+                        durations.push(currentData.duration);
+                        verticalDrops.push(parseFloat(currentData.verticalDrop.replace('ft', '')));
+                    }
+                    
+                    const totalDuration = durations.reduce((x, y) => {
+                        return combineDurations(x, y);
+                    });
+
+                    const largestVerticalDrop = `${Math.max(...verticalDrops)}ft`;
+
+                    const totalDistance = '5mi';
+
+                    return {
+                        displayName,
+                        userId,
+                        totalDuration,
+                        totalDistance,
+                        largestVerticalDrop,
+                        topSpeed: `${Math.round(Math.random() * 50)}mph`,
+                    };
+                });
+                setAllUsers(foo);
             });
     }, []);
+
+    console.log(allUsers);
 
     return (
         <View style={styles.screen}>
@@ -47,8 +74,8 @@ export function LeaderboardScreen({ route, navigation, userId }) {
                     dropdownIconColor="#000000"
                     onValueChange={(itemValue) => {
                         setSortBy(itemValue);
-                        setAllUsers([
-                            ...allUsers.sort((x, y) => {
+                        setAllUsers(
+                            allUsers.sort((x, y) => {
                                 if (itemValue !== 'totalDuration') {
                                     const firstValueNoLabel = x[itemValue].replace(unitsMap[itemValue], '');
                                     const secondValueNoLabel = y[itemValue].replace(unitsMap[itemValue], '');
@@ -63,8 +90,8 @@ export function LeaderboardScreen({ route, navigation, userId }) {
                                     }
                                     return 0;
                                 }
-                            }),
-                        ]);
+                            })
+                        );
                     }}
                 >
                     <Picker.Item label="Top Speed" value="topSpeed" />
@@ -74,7 +101,7 @@ export function LeaderboardScreen({ route, navigation, userId }) {
                 </Picker>
             </View>
             <FlatList
-                keyExtractor={({ userId }) => userId}
+                keyExtractor={(item, index) => index}
                 data={allUsers}
                 renderItem={({ item, index }) => {
                     const backgroundColorMap = {

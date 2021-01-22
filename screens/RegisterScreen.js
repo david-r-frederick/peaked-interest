@@ -40,9 +40,6 @@ export const RegisterScreen = ({ navigation, userExists }) => {
                                             .doc(curUser.uid)
                                             .set({
                                                 displayName: `${firstName} ${lastName}`,
-                                                topSpeed: "0mph",
-                                                totalDuration: "00:00:00",
-                                                largestVerticalDrop: "0ft",
                                             })
                                             .then((res) => {
                                                 navigation.replace('Trails');

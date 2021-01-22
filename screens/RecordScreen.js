@@ -4,11 +4,11 @@ import { Text, View, StyleSheet } from 'react-native';
 import { FlatList, TouchableOpacity } from 'react-native-gesture-handler';
 import Entypo from 'react-native-vector-icons/Entypo';
 import Ionicon from 'react-native-vector-icons/Ionicons';
-import { Stopwatch } from 'react-native-stopwatch-timer';
+import Stopwatch from '../components/StopWatch';
 import firebase from 'firebase';
 import { useEffect } from 'react';
 import { Barometer } from 'expo-sensors';
-import { combineDurations, IconMapper } from '../Utility';
+import { IconMapper } from '../Utility';
 
 function RecordButton({ title, width, paddingLeft, onPress }) {
     return (
@@ -204,7 +204,7 @@ export function RecordScreen({
                 />
             </View>
             <View style={styles.recordBtnContainer}>
-                <Stopwatch start={currentlyRecording} getTime={(time) => (duration = time)} />
+                <Stopwatch running={currentlyRecording} getTime={(time) => (duration = time)} />
                 {renderRecordControls()}
             </View>
         </View>

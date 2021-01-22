@@ -40,7 +40,7 @@ function TabNavigator({ temperature, user, trailsHistory }) {
                 <Text style={styles.weatherText}>Keystone, CO</Text>
                 <Text style={styles.weatherText}>Current Temperature: {temperature}</Text>
             </View>
-            <Tab.Navigator tabBarOptions={{ showLabel: false }} initialRouteName="Trails">
+            <Tab.Navigator tabBarOptions={{ showLabel: false }} initialRouteName="Leaderboard">
                 <Tab.Screen
                     options={{
                         tabBarIcon: ({ color, size }) => {
