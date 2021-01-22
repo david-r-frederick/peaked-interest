@@ -31,6 +31,7 @@ function TrailHistoryItem(props) {
                 <Text style={styles.itemData}>Duration: {item.duration}</Text>
                 <Text style={styles.itemData}>Temperature: {item.temperature}</Text>
                 <Text style={styles.itemData}>Vertical Drop: {item.verticalDrop}</Text>
+                <Text style={styles.itemData}>Length: {item.distance}</Text>
             </View>
         </View>
     );
@@ -98,7 +99,6 @@ export function History(props) {
 				(list of runs)
 				each item has...
 					top speed
-					distance
 			*/}
         </View>
     );

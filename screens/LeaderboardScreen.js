@@ -38,15 +38,18 @@ export function LeaderboardScreen({ navigation, userId }) {
                         const currentData = thisUsersData[i];
                         durations.push(currentData.duration);
                         verticalDrops.push(parseFloat(currentData.verticalDrop.replace('ft', '')));
+                        distances.push(parseFloat(currentData.distance.replace('mi', '')));
                     }
-                    
+
                     const totalDuration = durations.reduce((x, y) => {
                         return combineDurations(x, y);
                     });
 
                     const largestVerticalDrop = `${Math.max(...verticalDrops)}ft`;
 
-                    const totalDistance = '5mi';
+                    const totalDistance = `${distances.reduce((x, y) => {
+                      return x + y;
+                    }).toFixed(2)}mi`;
 
                     return {
                         displayName,
@@ -61,8 +64,6 @@ export function LeaderboardScreen({ navigation, userId }) {
             });
     }, []);
 
-    console.log(allUsers);
-
     return (
         <View style={styles.screen}>
             <View style={styles.pickerWrapper}>
@@ -72,14 +73,14 @@ export function LeaderboardScreen({ navigation, userId }) {
                     itemStyle={styles.pickerOption}
                     mode="dropdown"
                     dropdownIconColor="#000000"
-                    onValueChange={(itemValue) => {
-                        setSortBy(itemValue);
+                    onValueChange={(sortCat) => {
+                        setSortBy(sortCat);
                         setAllUsers(
                             allUsers.sort((x, y) => {
-                                if (itemValue !== 'totalDuration') {
-                                    const firstValueNoLabel = x[itemValue].replace(unitsMap[itemValue], '');
-                                    const secondValueNoLabel = y[itemValue].replace(unitsMap[itemValue], '');
-                                    return parseFloat(secondValueNoLabel) - parseFloat(firstValueNoLabel);
+                                if (sortCat !== 'totalDuration') {
+                                    const firstValueNoLabel = x[sortCat].replace(unitsMap[sortCat], '');
+                                    const secondValueNoLabel = y[sortCat].replace(unitsMap[sortCat], '');
+                                    return (parseFloat(secondValueNoLabel) - parseFloat(firstValueNoLabel)).toFixed(2);
                                 } else {
                                     const xTotalDurationSplit = x.totalDuration.split(':').map((el) => +el);
                                     const yTotalDurationSplit = y.totalDuration.split(':').map((el) => +el);
@@ -101,7 +102,7 @@ export function LeaderboardScreen({ navigation, userId }) {
                 </Picker>
             </View>
             <FlatList
-                keyExtractor={(item, index) => index}
+                keyExtractor={({ userId }) => userId}
                 data={allUsers}
                 renderItem={({ item, index }) => {
                     const backgroundColorMap = {

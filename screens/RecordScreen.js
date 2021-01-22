@@ -1,14 +1,13 @@
-import * as React from 'react';
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
 import { FlatList, TouchableOpacity } from 'react-native-gesture-handler';
 import Entypo from 'react-native-vector-icons/Entypo';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import Stopwatch from '../components/StopWatch';
 import firebase from 'firebase';
-import { useEffect } from 'react';
 import { Barometer } from 'expo-sensors';
 import { IconMapper } from '../Utility';
+import axios from 'axios';
 
 function RecordButton({ title, width, paddingLeft, onPress }) {
     return (
@@ -24,7 +23,6 @@ export function RecordScreen({
     userId,
     displayName,
     navigation,
-    updateRoutesCount,
     temperature,
     setTemperature,
 }) {
@@ -96,6 +94,7 @@ export function RecordScreen({
                                     startTime,
                                     endTime,
                                     duration,
+                                    distance: `${length}mi`,
                                     temperature: temp,
                                     difficulty,
                                     verticalDrop: `${verticalDrop.toFixed(2)}ft`,

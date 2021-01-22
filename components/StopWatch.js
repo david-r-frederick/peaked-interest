@@ -3,7 +3,7 @@ import { StyleSheet, View, Text } from 'react-native';
 
 const StopWatch = ({ running, getTime }) => {
     const [seconds, setSeconds] = useState(58);
-    const [minutes, setMinutes] = useState(59);
+    const [minutes, setMinutes] = useState(0);
     const [hours, setHours] = useState(0);
     const [timer, setTimer] = useState(null);
 
@@ -11,7 +11,7 @@ const StopWatch = ({ running, getTime }) => {
         if (running) {
             startClickedHandler();
         } else {
-            stopClickedHandler();
+            pauseClickedHandler();
         }
     }, [running]);
 
@@ -36,7 +36,7 @@ const StopWatch = ({ running, getTime }) => {
         setTimer(interval);
     };
 
-    const stopClickedHandler = () => {
+    const pauseClickedHandler = () => {
         if (timer) {
             clearInterval(timer);
             setHours(0);

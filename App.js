@@ -91,7 +91,6 @@ function TabNavigator({ temperature, user, trailsHistory }) {
                         />
                     )}
                 </Tab.Screen>
-                <Tab.Screen name="StopWatch" component={StopWatch} />
             </Tab.Navigator>
         </React.Fragment>
     );
@@ -115,6 +114,22 @@ export default function App() {
             });
         }
 
+        const db = firebase.firestore().collection('runs');
+        db.onSnapshot((querySnapshot) => {
+            const allTrails = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                allTrails.push({
+                    ...data,
+                    id: doc.id,
+                });
+            });
+            console.log("FIREBASE CHECK");
+            if (allTrails.length !== trailsHistory.length) {
+                setTrailsHistory(allTrails);
+            }
+        });
+
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
                 setUser(user);
@@ -134,21 +149,6 @@ export default function App() {
                 alert(err.message);
                 setTemperature('Unknown');
             });
-    }, []);
-
-    React.useEffect(() => {
-        const db = firebase.firestore().collection('runs');
-        db.get().then((snapShot) => {
-            const allTrails = [];
-            snapShot.docs.forEach((doc) => {
-                const data = doc.data();
-                allTrails.push({
-                    ...data,
-                    id: doc.id,
-                });
-            });
-            setTrailsHistory(allTrails);
-        });
     }, []);
 
     return (
