@@ -17,7 +17,6 @@ const StopWatch = ({ shouldRun, getTime }) => {
     const [timer, setTimer] = useState(null);
 
     useEffect(() => {
-      console.log(shouldRun);
         if (shouldRun) {
             startClickedHandler();
         } else {

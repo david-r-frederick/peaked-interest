@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
-import { FlatList, TouchableOpacity } from 'react-native-gesture-handler';
+import { TouchableOpacity } from 'react-native-gesture-handler';
 import Entypo from 'react-native-vector-icons/Entypo';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import Stopwatch from '../components/StopWatch';
 import firebase from 'firebase';
 import { Barometer } from 'expo-sensors';
 import { IconMapper } from '../Utility';
+import { Button } from '../components/common/Button';
 import axios from 'axios';
 import * as Location from 'expo-location';
 
@@ -29,15 +30,6 @@ function hPaToFeet(pressure) {
     return 145366.45 * (1 - Math.pow(pressure / 1013.25, 0.190284));
 }
 
-function RecordButton({ title, width, paddingLeft, onPress }) {
-    return (
-        <TouchableOpacity style={{ ...styles.recordBtn, width }} onPress={onPress}>
-            <Entypo name="vinyl" color="red" size={40} />
-            <Text style={{ ...styles.recordLabel, paddingLeft }}>{title}</Text>
-        </TouchableOpacity>
-    );
-}
-
 export function RecordScreen({ route, userId, displayName, navigation, temperature, setTemperature }) {
     const [currentlyRecording, setCurrentlyRecording] = useState(false);
     const [totalDuration, setTotalDuration] = useState(0);
@@ -47,12 +39,16 @@ export function RecordScreen({ route, userId, displayName, navigation, temperatu
     const [startAltitude, setStartAltitude] = useState(0);
     const [speeds, setSpeeds] = useState([]);
     const [remover, setRemover] = useState(null);
+
     const { name, difficulty, length } = route.params;
 
     useEffect(() => {
         Barometer.addListener(({ pressure }) => {
             setCurrentPressure(pressure);
         });
+        return () => {
+            Barometer.removeAllListeners();
+        };
     }, []);
 
     useEffect(() => {
@@ -61,136 +57,103 @@ export function RecordScreen({ route, userId, displayName, navigation, temperatu
         }
     }, [currentlyRecording]);
 
-    const renderInfoListItem = ({ item }) => {
-        return (
-            <View style={styles.listItem}>
-                <Text style={styles.listItemLabel}>{item.label}: </Text>
-                <Text style={styles.listItemValue}>{item.value}</Text>
-            </View>
-        );
+    const finishHandler = () => {
+        setCurrentlyRecording(false);
+        remover.then((res) => {
+            res.remove();
+        });
+        const [endTime, date] = getCurrentTime();
+
+        let endAltitude = hPaToFeet(currentPressure);
+        let verticalDrop = startAltitude - endAltitude;
+        const topSpeed = (Math.max(...speeds) * 2.23694).toFixed(1);
+
+        const fs = firebase.firestore();
+
+        const saveToFirebase = (temp) => {
+            fs.collection('runs')
+                .add({
+                    trailId: name,
+                    userId,
+                    userName: displayName,
+                    date,
+                    startTime,
+                    endTime,
+                    duration: totalDuration,
+                    distance: length,
+                    temperature: temp,
+                    topSpeed,
+                    difficulty,
+                    verticalDrop: verticalDrop.toFixed(2),
+                })
+                .then(() => {
+                    navigation.navigate('My History');
+                });
+        };
+
+        axios
+            .get(
+                `https://api.openweathermap.org/data/2.5/onecall?lat=39.5792&lon=105.9347&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
+            )
+            .then((response) => {
+                setTemperature(response.data.current.temp);
+                saveToFirebase(response.data.current.temp);
+            })
+            .catch((err) => {
+                alert(err.message);
+                setTemperature('Unknown');
+                saveToFirebase('Unknown');
+            });
     };
 
-    const renderFinishButton = () => {
-        if (runStarted) {
-            return (
-                <TouchableOpacity
-                    style={{ ...styles.resolveBtn, marginLeft: 10 }}
-                    onPress={() => {
-                        setCurrentlyRecording(false);
-                        remover.then((res) => {
-                            res.remove();
-                        });
-                        const [endTime, date] = getCurrentTime();
+    const pauseHandler = () => {
+        setCurrentlyRecording(false);
+        remover.then((res) => {
+            console.log(res);
+            res.remove();
+        });
+    };
 
-                        let endAltitude = hPaToFeet(currentPressure);
-                        let verticalDrop = startAltitude - endAltitude;
-                        const topSpeed = (Math.max(...speeds) * 2.23694).toFixed(1);
+    const recordHandler = () => {
+        setCurrentlyRecording(true);
+        let removePromise = Location.watchPositionAsync(
+            {
+                accuracy: Location.Accuracy.BestForNavigation,
+                timeInterval: 1000,
+            },
+            (data) => {
+                setSpeeds((prevSpeeds) => {
+                    return [...prevSpeeds, data.coords.speed];
+                });
+            }
+        );
+        setRemover(removePromise);
 
-                        const fs = firebase.firestore();
-
-                        const saveToFirebase = (temp) => {
-                            fs.collection('runs')
-                                .add({
-                                    trailId: name,
-                                    userId,
-                                    userName: displayName,
-                                    date,
-                                    startTime,
-                                    endTime,
-                                    duration: totalDuration,
-                                    distance: length,
-                                    temperature: temp,
-                                    topSpeed,
-                                    difficulty,
-                                    verticalDrop: verticalDrop.toFixed(2),
-                                })
-                                .then(() => {
-                                    navigation.navigate('My History');
-                                });
-                        };
-
-                        axios
-                            .get(
-                                `https://api.openweathermap.org/data/2.5/onecall?lat=39.5792&lon=105.9347&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
-                            )
-                            .then((response) => {
-                                setTemperature(response.data.current.temp);
-                                saveToFirebase(response.data.current.temp);
-                            })
-                            .catch((err) => {
-                                alert(err.message);
-                                setTemperature('Unknown');
-                                saveToFirebase('Unknown');
-                            });
-                    }}
-                >
-                    <Ionicon name="stop-circle-outline" color="black" size={40} backgroundColor="white" />
-                    <Text style={styles.resolveLabel}>Finish</Text>
-                </TouchableOpacity>
-            );
+        if (!runStarted) {
+            const [startTime] = getCurrentTime();
+            setStartTime(startTime);
+            setRunStarted(true);
         }
-        return null;
     };
 
     const renderRecordControls = () => {
-        if (currentlyRecording) {
-            return (
-                <View style={styles.resolveContainer}>
-                    <TouchableOpacity
-                        style={styles.resolveBtn}
-                        onPress={() => {
-                            setCurrentlyRecording(false);
-                            remover.then((res) => {
-                                console.log(res);
-                                res.remove();
-                            });
-                        }}
-                    >
-                        <Ionicon
-                            name="pause-circle-outline"
-                            color="black"
-                            size={40}
-                            backgroundColor="white"
-                            color="blue"
-                        />
-                        <Text style={styles.resolveLabel}>Pause</Text>
-                    </TouchableOpacity>
-                    {renderFinishButton()}
-                </View>
-            );
-        } else {
-            return (
-                <View style={styles.resolveContainer}>
-                    <RecordButton
+        return (
+            <View style={styles.resolveContainer}>
+                {currentlyRecording ? (
+                    <Button icon={IconMapper['pause']} title="Pause" onPress={pauseHandler} width="half" />
+                ) : (
+                    <Button
+                        icon={IconMapper['record']}
                         title={runStarted ? 'Resume' : 'Start'}
-                        paddingLeft={runStarted ? 2 : 15}
-                        width={runStarted ? 145 : 300}
-                        onPress={() => {
-                            setCurrentlyRecording(true);
-                            let removePromise = Location.watchPositionAsync(
-                                {
-                                    accuracy: Location.Accuracy.BestForNavigation,
-                                    timeInterval: 1000,
-                                },
-                                (data) => {
-                                    setSpeeds((prevSpeeds) => {
-                                        return [...prevSpeeds, data.coords.speed];
-                                    });
-                                }
-                            );
-                            setRemover(removePromise);
-
-                            if (!runStarted) {
-                                const [startTime] = getCurrentTime();
-                                setStartTime(startTime);
-                                setRunStarted(true);
-                            }
-                        }}
+                        onPress={recordHandler}
+                        width={runStarted ? 'half' : 'full'}
                     />
-                    {renderFinishButton()}
-                </View>
-            );
-        }
+                )}
+                {runStarted ? (
+                    <Button icon={IconMapper['finish']} title="Finish" onPress={finishHandler} width="half" />
+                ) : null}
+            </View>
+        );
     };
 
     return (
@@ -203,24 +166,18 @@ export function RecordScreen({ route, userId, displayName, navigation, temperatu
                 </View>
             </View>
             <View>
-                <FlatList
-                    data={[
-                        {
-                            label: 'Current Temperature',
-                            value: `${temperature}`,
-                        },
-                        {
-                            label: 'Current Pressure',
-                            value: currentPressure.toFixed(2),
-                        },
-                        {
-                            label: 'Start Altitude',
-                            value: startAltitude.toFixed(2),
-                        },
-                    ]}
-                    renderItem={renderInfoListItem}
-                    keyExtractor={(item) => item.label}
-                />
+                <View style={styles.listItem}>
+                    <Text style={styles.listItemLabel}>Current Temperature:</Text>
+                    <Text style={styles.listItemValue}>{temperature}</Text>
+                </View>
+                <View style={styles.listItem}>
+                    <Text style={styles.listItemLabel}>Current Pressure: </Text>
+                    <Text style={styles.listItemValue}>{currentPressure.toFixed(2)}</Text>
+                </View>
+                <View style={styles.listItem}>
+                    <Text style={styles.listItemLabel}>Start Altitude: </Text>
+                    <Text style={styles.listItemValue}>{startAltitude.toFixed(2)}</Text>
+                </View>
             </View>
             <View style={styles.recordBtnContainer}>
                 <Text>Top Speed: {speeds.length ? (Math.max(...speeds) * 2.23694).toFixed(1) : 0}mph</Text>
@@ -242,36 +199,11 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 15,
     },
-    recordBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 10,
-        borderWidth: 1,
-        borderColor: 'black',
-        borderRadius: 10,
-        width: 300,
-    },
-    resolveBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 10,
-        borderWidth: 1,
-        borderColor: 'black',
-        borderRadius: 10,
-        width: 145,
-    },
     resolveContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-    },
-    resolveLabel: {
-        fontSize: 25,
-    },
-    recordLabel: {
-        fontSize: 25,
-        paddingLeft: 10,
+        justifyContent: 'space-between',
+        width: 300,
     },
     header: {
         flexDirection: 'row',

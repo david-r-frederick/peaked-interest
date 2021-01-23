@@ -1,10 +1,15 @@
 import { EasyIcon, MediumIcon, HardIcon } from './components/difficultyIcons/difficultyIcons';
+import Ionicon from 'react-native-vector-icons/Ionicons';
+import Entypo from 'react-native-vector-icons/Entypo';
 import * as React from 'react';
 
 export const IconMapper = {
     green: <EasyIcon />,
     blue: <MediumIcon />,
     black: <HardIcon />,
+    pause: <Ionicon name="pause-circle-outline" color="black" size={40} backgroundColor="white" color="blue" />,
+    record: <Entypo name="vinyl" color="red" size={40} />,
+    finish: <Ionicon name="stop-circle-outline" color="black" size={40} backgroundColor="white" />,
 };
 
 export const easyRuns = [
