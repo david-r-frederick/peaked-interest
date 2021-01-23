@@ -8,6 +8,26 @@ import firebase from 'firebase';
 import { Barometer } from 'expo-sensors';
 import { IconMapper } from '../Utility';
 import axios from 'axios';
+import * as Location from 'expo-location';
+
+function getCurrentTime() {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+
+    let hours = today.getHours();
+    let minutes = today.getMinutes();
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    return [`${hours}:${minutes} ${ampm}`, `${mm}/${dd}/${yyyy}`];
+}
+
+function hPaToFeet(pressure) {
+    return 145366.45 * (1 - Math.pow(pressure / 1013.25, 0.190284));
+}
 
 function RecordButton({ title, width, paddingLeft, onPress }) {
     return (
@@ -18,20 +38,15 @@ function RecordButton({ title, width, paddingLeft, onPress }) {
     );
 }
 
-export function RecordScreen({
-    route,
-    userId,
-    displayName,
-    navigation,
-    temperature,
-    setTemperature,
-}) {
+export function RecordScreen({ route, userId, displayName, navigation, temperature, setTemperature }) {
     const [currentlyRecording, setCurrentlyRecording] = useState(false);
     const [totalDuration, setTotalDuration] = useState(0);
     const [runStarted, setRunStarted] = useState(false);
     const [startTime, setStartTime] = useState('');
     const [currentPressure, setCurrentPressure] = useState(0);
     const [startAltitude, setStartAltitude] = useState(0);
+    const [speeds, setSpeeds] = useState([]);
+    const [remover, setRemover] = useState(null);
     const { name, difficulty, length } = route.params;
 
     useEffect(() => {
@@ -55,8 +70,6 @@ export function RecordScreen({
         );
     };
 
-    let duration;
-
     const renderFinishButton = () => {
         if (runStarted) {
             return (
@@ -64,23 +77,14 @@ export function RecordScreen({
                     style={{ ...styles.resolveBtn, marginLeft: 10 }}
                     onPress={() => {
                         setCurrentlyRecording(false);
-                        setTotalDuration(duration);
-                        const today = new Date();
-                        const dd = String(today.getDate()).padStart(2, '0');
-                        const mm = String(today.getMonth() + 1).padStart(2, '0');
-                        const yyyy = today.getFullYear();
-                        const date = `${mm}/${dd}/${yyyy}`;
-
-                        let hours = today.getHours();
-                        let minutes = today.getMinutes();
-                        const ampm = hours >= 12 ? 'pm' : 'am';
-                        hours = hours % 12;
-                        hours = hours ? hours : 12;
-                        minutes = minutes < 10 ? '0' + minutes : minutes;
-                        const endTime = `${hours}:${minutes} ${ampm}`;
+                        remover.then((res) => {
+                            res.remove();
+                        });
+                        const [endTime, date] = getCurrentTime();
 
                         let endAltitude = hPaToFeet(currentPressure);
                         let verticalDrop = startAltitude - endAltitude;
+                        const topSpeed = (Math.max(...speeds) * 2.23694).toFixed(1);
 
                         const fs = firebase.firestore();
 
@@ -93,11 +97,12 @@ export function RecordScreen({
                                     date,
                                     startTime,
                                     endTime,
-                                    duration,
-                                    distance: `${length}mi`,
+                                    duration: totalDuration,
+                                    distance: length,
                                     temperature: temp,
+                                    topSpeed,
                                     difficulty,
-                                    verticalDrop: `${verticalDrop.toFixed(2)}ft`,
+                                    verticalDrop: verticalDrop.toFixed(2),
                                 })
                                 .then(() => {
                                     navigation.navigate('My History');
@@ -109,8 +114,8 @@ export function RecordScreen({
                                 `https://api.openweathermap.org/data/2.5/onecall?lat=39.5792&lon=105.9347&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
                             )
                             .then((response) => {
-                                setTemperature(`${response.data.current.temp} °F`);
-                                saveToFirebase(`${response.data.current.temp} °F`);
+                                setTemperature(response.data.current.temp);
+                                saveToFirebase(response.data.current.temp);
                             })
                             .catch((err) => {
                                 alert(err.message);
@@ -131,7 +136,16 @@ export function RecordScreen({
         if (currentlyRecording) {
             return (
                 <View style={styles.resolveContainer}>
-                    <TouchableOpacity style={styles.resolveBtn} onPress={() => setCurrentlyRecording(false)}>
+                    <TouchableOpacity
+                        style={styles.resolveBtn}
+                        onPress={() => {
+                            setCurrentlyRecording(false);
+                            remover.then((res) => {
+                                console.log(res);
+                                res.remove();
+                            });
+                        }}
+                    >
                         <Ionicon
                             name="pause-circle-outline"
                             color="black"
@@ -153,16 +167,22 @@ export function RecordScreen({
                         width={runStarted ? 145 : 300}
                         onPress={() => {
                             setCurrentlyRecording(true);
+                            let removePromise = Location.watchPositionAsync(
+                                {
+                                    accuracy: Location.Accuracy.BestForNavigation,
+                                    timeInterval: 1000,
+                                },
+                                (data) => {
+                                    setSpeeds((prevSpeeds) => {
+                                        return [...prevSpeeds, data.coords.speed];
+                                    });
+                                }
+                            );
+                            setRemover(removePromise);
+
                             if (!runStarted) {
-                                const today = new Date();
-                                let hours = today.getHours();
-                                let minutes = today.getMinutes();
-                                const ampm = hours >= 12 ? 'pm' : 'am';
-                                hours = hours % 12;
-                                hours = hours ? hours : 12;
-                                minutes = minutes < 10 ? '0' + minutes : minutes;
-                                const startTimeString = `${hours}:${minutes} ${ampm}`;
-                                setStartTime(startTimeString);
+                                const [startTime] = getCurrentTime();
+                                setStartTime(startTime);
                                 setRunStarted(true);
                             }
                         }}
@@ -203,15 +223,12 @@ export function RecordScreen({
                 />
             </View>
             <View style={styles.recordBtnContainer}>
-                <Stopwatch running={currentlyRecording} getTime={(time) => (duration = time)} />
+                <Text>Top Speed: {speeds.length ? (Math.max(...speeds) * 2.23694).toFixed(1) : 0}mph</Text>
+                <Stopwatch shouldRun={currentlyRecording} getTime={setTotalDuration} />
                 {renderRecordControls()}
             </View>
         </View>
     );
-}
-
-function hPaToFeet(pressure) {
-    return 145366.45 * (1 - Math.pow(pressure / 1013.25, 0.190284));
 }
 
 const styles = StyleSheet.create({

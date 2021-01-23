@@ -2,77 +2,78 @@ import * as React from 'react';
 import { Text, View, StyleSheet, SectionList } from 'react-native';
 import { IconMapper } from '../Utility';
 
-function TrailHistoryItem(props) {
-    const { item } = props;
+function TrailHistoryItem({ item }) {
+    const { difficulty, trailId, startTime, endTime, duration, temperature, verticalDrop, distance, topSpeed } = item;
     const IconBackgroundMapper = {
         green: 'rgba(150, 200, 150, 0.1)',
         blue: 'rgba(150, 150, 240, 0.1)',
         black: 'rgba(150, 150, 150, 0.1)',
     };
 
-    let difficultyIcon = IconMapper[item.difficulty];
-    let backgroundColor = IconBackgroundMapper[item.difficulty];
+    let difficultyIcon = IconMapper[difficulty];
+    let backgroundColor = IconBackgroundMapper[difficulty];
 
     return (
         <View
             style={{
                 ...styles.item,
                 backgroundColor,
-                borderColor: item.difficulty,
+                borderColor: difficulty,
             }}
         >
             <View style={styles.itemHeader}>
                 {difficultyIcon}
-                <Text style={styles.itemName}>{item.trailId}</Text>
+                <Text style={styles.itemName}>{trailId}</Text>
             </View>
             <View style={styles.statsContainer}>
-                <Text style={styles.itemData}>Start: {item.startTime}</Text>
-                <Text style={styles.itemData}>End: {item.endTime}</Text>
-                <Text style={styles.itemData}>Duration: {item.duration}</Text>
-                <Text style={styles.itemData}>Temperature: {item.temperature}</Text>
-                <Text style={styles.itemData}>Vertical Drop: {item.verticalDrop}</Text>
-                <Text style={styles.itemData}>Length: {item.distance}</Text>
+                <Text style={styles.itemData}>Start: {startTime}</Text>
+                <Text style={styles.itemData}>End: {endTime}</Text>
+                <Text style={styles.itemData}>Duration: {duration}</Text>
+                <Text style={styles.itemData}>Temperature: {temperature}</Text>
+                <Text style={styles.itemData}>Top Speed: {topSpeed}</Text>
+                <Text style={styles.itemData}>Avg Speed: </Text>
+                <Text style={styles.itemData}>Vertical Drop: {verticalDrop}</Text>
+                <Text style={styles.itemData}>Length: {distance}</Text>
             </View>
         </View>
     );
 }
 
-export function History(props) {
-    const { displayName, trailsHistory } = props;
+export function History({ displayName, trailsHistory }) {
     const allDates = Array.from(new Set(trailsHistory.map(({ date }) => date))).sort(
         (x, y) => new Date(y) - new Date(x)
     );
+
+    const topSpeedEver = Math.max(...trailsHistory.map((trailObj) => trailObj.topSpeed));
 
     return (
         <View style={styles.screen}>
             <View style={styles.card}>
                 <Text style={styles.infoCardHeading}>{displayName}</Text>
-                <Text style={styles.infoCardLabel}>Top Speed Ever: 27mph</Text>
+                <Text style={styles.infoCardLabel}>Top Speed Ever: {topSpeedEver}mph</Text>
                 <Text style={styles.infoCardLabel}>
-                    Total Time Skiing:{' '}
-                    <Text>
-                        {trailsHistory
-                            .map((trailObj) => trailObj.duration || '00:00:00')
-                            .reduce((acc, cur) => {
-                                const allThreeCur = cur.split(':').map((n) => +n);
-                                const allThreeAcc = acc.split(':').map((n) => +n);
-                                allThreeAcc.forEach((num, index) => {
-                                    allThreeCur[index] += num;
-                                });
-                                for (let i = 2; i > 0; i--) {
-                                    if (allThreeCur[i] >= 60) {
-                                        allThreeCur[i - 1] += Math.floor(allThreeCur[i] / 60);
-                                        allThreeCur[i] = allThreeCur[i] % 60;
-                                    }
+                    Total Time Skiing: &nbsp;
+                    {trailsHistory
+                        .map((trailObj) => trailObj.duration || '00:00:00')
+                        .reduce((acc, cur) => {
+                            const allThreeCur = cur.split(':').map((n) => +n);
+                            const allThreeAcc = acc.split(':').map((n) => +n);
+                            allThreeAcc.forEach((num, index) => {
+                                allThreeCur[index] += num;
+                            });
+                            for (let i = 2; i > 0; i--) {
+                                if (allThreeCur[i] >= 60) {
+                                    allThreeCur[i - 1] += Math.floor(allThreeCur[i] / 60);
+                                    allThreeCur[i] = allThreeCur[i] % 60;
                                 }
-                                return allThreeCur
-                                    .map((n) => {
-                                        const asString = n.toString();
-                                        return asString.length === 1 ? '0' + asString : n;
-                                    })
-                                    .join(':');
-                            }, '00:00:00')}
-                    </Text>
+                            }
+                            return allThreeCur
+                                .map((n) => {
+                                    const asString = n.toString();
+                                    return asString.length === 1 ? '0' + asString : n;
+                                })
+                                .join(':');
+                        }, '00:00:00')}
                 </Text>
             </View>
             <SectionList
@@ -92,14 +93,6 @@ export function History(props) {
                 renderSectionHeader={({ section }) => <Text style={styles.sectionHeader}>{section.title}</Text>}
                 keyExtractor={(item) => item.id}
             />
-            {/* 
-				Stats
-				  Top Speed Ever
-				History
-				(list of runs)
-				each item has...
-					top speed
-			*/}
         </View>
     );
 }

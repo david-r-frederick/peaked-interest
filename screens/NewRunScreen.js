@@ -3,40 +3,37 @@ import { Text, View, StyleSheet, SectionList, TouchableHighlight } from 'react-n
 import { IconMapper, easyRuns, mediumRuns, hardRuns } from '../Utility';
 import { ChevronRight } from '../components/Chevrons';
 
-const all = [...easyRuns, ...mediumRuns, ...hardRuns];
-
 function sortRuns(arr) {
     return arr.sort((x, y) => (x.name > y.name ? 1 : -1));
 }
+const all = [...sortRuns(easyRuns), ...sortRuns(mediumRuns), ...sortRuns(hardRuns)];
 
-function RunItem(props) {
-    const { item } = props;
-
-    return (
+function RunItem({ item, borderTop }) {
+    return item ? (
         <View
             style={{
                 ...styles.item,
-                borderTopWidth: props.borderTop ? 1.5 : 0,
+                borderTopWidth: borderTop ? 1.5 : 0,
             }}
         >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={styles.itemContent}>
                 {IconMapper[item.difficulty]}
                 <View style={styles.routeInfoContainer}>
                     <Text style={styles.itemName}>{item.name}</Text>
                     <Text style={styles.liftName}>{item.lift}</Text>
-                    <Text style={styles.liftName}>{props.item.length}mi</Text>
+                    <Text style={styles.liftName}>{item.length}mi</Text>
                 </View>
             </View>
             <ChevronRight />
         </View>
-    );
+    ) : null;
 }
 
 export function NewRunScreen({ navigation, mostRecents }) {
-    const usable = [];
+    const recentsTrailData = [];
     for (let i = 0; i < all.length; i++) {
         if (mostRecents.includes(all[i].name)) {
-            usable[mostRecents.indexOf(all[i].name)] = all[i];
+            recentsTrailData[mostRecents.indexOf(all[i].name)] = all[i];
         }
     }
 
@@ -44,22 +41,24 @@ export function NewRunScreen({ navigation, mostRecents }) {
         <View style={styles.container}>
             <SectionList
                 sections={[
-                    { title: 'Recent', data: usable },
+                    { title: 'Recent', data: recentsTrailData },
                     {
                         title: 'All Runs',
-                        data: [...sortRuns(easyRuns), ...sortRuns(mediumRuns), ...sortRuns(hardRuns)],
+                        data: all,
                     },
                 ]}
-                renderItem={({ item, index }) => (
-                    <TouchableHighlight
-                        onPress={() => navigation.navigate('Record Run', item)}
-                        underlayColor="lightgrey"
-                    >
-                        <RunItem borderTop={index === 0} item={item} />
-                    </TouchableHighlight>
-                )}
+                renderItem={({ item, index }) => {
+                    return item ? (
+                        <TouchableHighlight
+                            onPress={() => navigation.navigate('Record Run', item)}
+                            underlayColor="lightgrey"
+                        >
+                            <RunItem borderTop={!index} item={item} />
+                        </TouchableHighlight>
+                    ) : null;
+                }}
                 renderSectionHeader={({ section }) => <Text style={styles.sectionHeader}>{section.title}</Text>}
-                keyExtractor={(item, index) => index}
+                keyExtractor={(item) => item.name}
             />
         </View>
     );
@@ -87,6 +86,10 @@ const styles = StyleSheet.create({
         paddingRight: 30,
         borderBottomWidth: 0.5,
         borderColor: 'rgb(200, 200, 200)',
+    },
+    itemContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     itemName: {
         fontSize: 20,

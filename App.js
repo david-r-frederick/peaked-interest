@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     LeaderboardScreen,
     MyHistoryScreen,
@@ -15,7 +15,7 @@ import firebase from 'firebase';
 import axios from 'axios';
 import Entypo from 'react-native-vector-icons/Entypo';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
-import StopWatch from './components/StopWatch';
+import * as Location from 'expo-location';
 
 LogBox.ignoreLogs(['Setting a timer']);
 
@@ -34,13 +34,37 @@ function getHeaderTitle(route) {
 }
 
 function TabNavigator({ temperature, user, trailsHistory }) {
+    const userTrailsOrdered = trailsHistory
+        .filter((trailObj) => trailObj.userId === user.uid)
+        .sort((x, y) => {
+            return new Date(y.date + ' ' + y.endTime) - new Date(x.date + ' ' + x.endTime);
+        });
+
+    const mostRecentThree = [];
+    for (let i = 0; i < userTrailsOrdered.length; i++) {
+        const trailName = userTrailsOrdered[i].trailId;
+        if (!mostRecentThree.includes(trailName)) {
+            mostRecentThree.push(trailName);
+        }
+        if (mostRecentThree.length === 3) {
+            break;
+        }
+    }
+
     return (
         <React.Fragment>
             <View style={styles.widget}>
-                <Text style={styles.weatherText}>Keystone, CO</Text>
-                <Text style={styles.weatherText}>Current Temperature: {temperature}</Text>
+                <Text style={styles.weatherText}>{temperature}</Text>
+                <Text style={styles.location}>Keystone, CO</Text>
             </View>
-            <Tab.Navigator tabBarOptions={{ showLabel: false }} initialRouteName="Leaderboard">
+            <Tab.Navigator
+                tabBarOptions={{
+                    showLabel: false,
+                    activeBackgroundColor: 'rgb(255, 145, 0)',
+                    activeTintColor: 'white',
+                }}
+                initialRouteName="Leaderboard"
+            >
                 <Tab.Screen
                     options={{
                         tabBarIcon: ({ color, size }) => {
@@ -62,12 +86,7 @@ function TabNavigator({ temperature, user, trailsHistory }) {
                     {(props) => (
                         <NewRunScreen
                             {...props}
-                            mostRecents={trailsHistory
-                                .sort((x, y) => {
-                                    return new Date(y.date + ' ' + y.endTime) - new Date(x.date + ' ' + x.endTime);
-                                })
-                                .slice(0, 3)
-                                .map((trailObj) => trailObj.trailId)}
+                            mostRecents={mostRecentThree}
                             userId={user.uid}
                             temperature={temperature}
                         />
@@ -85,9 +104,7 @@ function TabNavigator({ temperature, user, trailsHistory }) {
                         <MyHistoryScreen
                             {...props}
                             displayName={user.displayName}
-                            trailsHistory={trailsHistory.filter((trailObj) => {
-                                return trailObj.userId === user.uid;
-                            })}
+                            trailsHistory={trailsHistory.filter((trailObj) => trailObj.userId === user.uid)}
                         />
                     )}
                 </Tab.Screen>
@@ -97,11 +114,21 @@ function TabNavigator({ temperature, user, trailsHistory }) {
 }
 
 export default function App() {
-    const [temperature, setTemperature] = React.useState('Loading...');
-    const [user, setUser] = React.useState(null);
-    const [trailsHistory, setTrailsHistory] = React.useState([]);
+    const [temperature, setTemperature] = useState('Loading...');
+    const [user, setUser] = useState(null);
+    const [trailsHistory, setTrailsHistory] = useState([]);
 
-    React.useEffect(() => {
+    useEffect(() => {
+        (async () => {
+            let { status } = await Location.requestPermissionsAsync();
+            if (status !== 'granted') {
+                alert('Permission to access location was denied');
+                return;
+            }
+        })();
+    }, []);
+
+    useEffect(() => {
         if (!firebase.apps.length) {
             firebase.initializeApp({
                 apiKey: 'AIzaSyCV62W7Aiaa1Y0KOTubkAvcQ5qCWY2N94k',
@@ -124,7 +151,6 @@ export default function App() {
                     id: doc.id,
                 });
             });
-            console.log("FIREBASE CHECK");
             if (allTrails.length !== trailsHistory.length) {
                 setTrailsHistory(allTrails);
             }
@@ -135,9 +161,7 @@ export default function App() {
                 setUser(user);
             }
         });
-    });
 
-    React.useEffect(() => {
         axios
             .get(
                 `https://api.openweathermap.org/data/2.5/onecall?lat=39.5792&lon=105.9347&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
@@ -158,12 +182,12 @@ export default function App() {
                     {(props) => <RegisterScreen {...props} userExists={!!user} />}
                 </Stack.Screen>
                 <Stack.Screen
+                    name="Trails"
                     options={({ route }) => {
                         return {
                             title: getHeaderTitle(route),
                         };
                     }}
-                    name="Trails"
                 >
                     {(props) => (
                         <TabNavigator {...props} temperature={temperature} user={user} trailsHistory={trailsHistory} />
@@ -195,7 +219,7 @@ const styles = StyleSheet.create({
         bottom: 48,
         width: '100%',
         zIndex: 1000,
-        paddingVertical: 8,
+        paddingVertical: 5,
         paddingLeft: 12,
         borderBottomColor: '#bbb',
         borderTopColor: '#bbb',
@@ -203,6 +227,10 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
     },
     weatherText: {
+        fontSize: 24,
+    },
+    location: {
         fontSize: 14,
+        color: 'rgb(100, 100, 100)',
     },
 });

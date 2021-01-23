@@ -5,14 +5,64 @@ import { ChevronRight } from '../components/Chevrons';
 import { combineDurations } from '../Utility';
 import firebase from 'firebase';
 
+const backgroundColorMap = {
+    0: 'gold',
+    1: 'silver',
+    2: '#cd7f32',
+};
+
+const unitsMap = {
+    topSpeed: 'mph',
+    largestVerticalDrop: 'ft',
+    totalDistance: 'mi',
+    totalDuration: '',
+};
+
+const LeaderBoardItem = ({ navigation, item, index, sortCat, userId }) => {
+    let backgroundColor = backgroundColorMap[index] || '#ddd';
+    return (
+        <View style={{ ...styles.line, borderTopWidth: index === 0 ? 1 : 0 }}>
+            <TouchableHighlight
+                onPress={() => {
+                    if (item.userId === userId) {
+                        navigation.navigate('My History');
+                    } else {
+                        navigation.navigate('User History', {
+                            userId: item.userId,
+                            displayName: item.displayName,
+                        });
+                    }
+                }}
+                underlayColor="lightgrey"
+            >
+                <View style={styles.leaderboardItem}>
+                    <View style={styles.leaderboardNameAndRank}>
+                        <Text
+                            style={{
+                                ...styles.leaderboardRank,
+                                backgroundColor,
+                            }}
+                        >
+                            {index + 1}
+                        </Text>
+                        <Text style={styles.leaderboardItemHeading}>{item.displayName}</Text>
+                    </View>
+                    <View style={styles.leaderboardNameAndRank}>
+                        <Text style={styles.leaderboardItemLabel}>
+                            {item[sortCat]}&nbsp;
+                            {unitsMap[sortCat]}
+                        </Text>
+                        <ChevronRight />
+                    </View>
+                </View>
+            </TouchableHighlight>
+        </View>
+    );
+};
+
 export function LeaderboardScreen({ navigation, userId }) {
-    const [sortBy, setSortBy] = useState('topSpeed');
+    const [sortCat, setSortCat] = useState('topSpeed');
     const [allUsers, setAllUsers] = useState([]);
-    const unitsMap = {
-        topSpeed: 'mph',
-        largestVerticalDrop: 'ft',
-        totalDistance: 'mi',
-    };
 
     useEffect(() => {
         firebase
@@ -28,28 +78,26 @@ export function LeaderboardScreen({ navigation, userId }) {
                     userIds.push(runObject.userId);
                 });
                 userIds = [...new Set(userIds)];
-                const foo = userIds.map((userId) => {
+                const usersWithMaxes = userIds.map((userId) => {
                     const thisUsersData = allRuns.filter((runObj) => runObj.userId === userId);
                     const displayName = thisUsersData[0].userName;
-                    const durations = [];
-                    const verticalDrops = [];
-                    const distances = [];
+                    let totalDuration = '00:00:00';
+                    let largestVerticalDrop = parseFloat(thisUsersData[0].verticalDrop);
+                    let totalDistance = 0;
+                    let topSpeedEver = 0;
                     for (let i = 0; i < thisUsersData.length; i++) {
-                        const currentData = thisUsersData[i];
-                        durations.push(currentData.duration);
-                        verticalDrops.push(parseFloat(currentData.verticalDrop.replace('ft', '')));
-                        distances.push(parseFloat(currentData.distance.replace('mi', '')));
+                        const { duration, verticalDrop, distance, topSpeed } = thisUsersData[i];
+                        totalDuration = combineDurations(totalDuration, duration);
+                        const floatVerticalDrop = parseFloat(verticalDrop);
+                        if (floatVerticalDrop > largestVerticalDrop) {
+                            largestVerticalDrop = floatVerticalDrop;
+                        }
+                        totalDistance += parseFloat(distance);
+                        const floatTopSpeed = parseFloat(topSpeed);
+                        if (floatTopSpeed > topSpeedEver) {
+                            topSpeedEver = floatTopSpeed;
+                        }
                     }
-
-                    const totalDuration = durations.reduce((x, y) => {
-                        return combineDurations(x, y);
-                    });
-
-                    const largestVerticalDrop = `${Math.max(...verticalDrops)}ft`;
-
-                    const totalDistance = `${distances.reduce((x, y) => {
-                      return x + y;
-                    }).toFixed(2)}mi`;
 
                     return {
                         displayName,
@@ -57,10 +105,10 @@ export function LeaderboardScreen({ navigation, userId }) {
                         totalDuration,
                         totalDistance,
                         largestVerticalDrop,
-                        topSpeed: `${Math.round(Math.random() * 50)}mph`,
+                        topSpeed: topSpeedEver.toFixed(1),
                     };
                 });
-                setAllUsers(foo);
+                setAllUsers([...usersWithMaxes]);
             });
     }, []);
 
@@ -68,22 +116,20 @@ export function LeaderboardScreen({ navigation, userId }) {
         <View style={styles.screen}>
             <View style={styles.pickerWrapper}>
                 <Picker
-                    selectedValue={sortBy}
+                    selectedValue={sortCat}
                     style={styles.picker}
                     itemStyle={styles.pickerOption}
                     mode="dropdown"
-                    dropdownIconColor="#000000"
+                    dropdownIconColor="#dddddd"
                     onValueChange={(sortCat) => {
-                        setSortBy(sortCat);
-                        setAllUsers(
-                            allUsers.sort((x, y) => {
+                        setSortCat(sortCat);
+                        setAllUsers([
+                            ...allUsers.sort((x, y) => {
                                 if (sortCat !== 'totalDuration') {
-                                    const firstValueNoLabel = x[sortCat].replace(unitsMap[sortCat], '');
-                                    const secondValueNoLabel = y[sortCat].replace(unitsMap[sortCat], '');
-                                    return (parseFloat(secondValueNoLabel) - parseFloat(firstValueNoLabel)).toFixed(2);
+                                    return parseFloat(y[sortCat]) - parseFloat(x[sortCat]);
                                 } else {
-                                    const xTotalDurationSplit = x.totalDuration.split(':').map((el) => +el);
-                                    const yTotalDurationSplit = y.totalDuration.split(':').map((el) => +el);
+                                    const xTotalDurationSplit = x.totalDuration.split(':').map((n) => +n);
+                                    const yTotalDurationSplit = y.totalDuration.split(':').map((n) => +n);
                                     for (let i = 0; i < 3; i++) {
                                         if (xTotalDurationSplit[i] !== yTotalDurationSplit[i]) {
                                             return yTotalDurationSplit[i] - xTotalDurationSplit[i];
@@ -91,8 +137,8 @@ export function LeaderboardScreen({ navigation, userId }) {
                                     }
                                     return 0;
                                 }
-                            })
-                        );
+                            }),
+                        ]);
                     }}
                 >
                     <Picker.Item label="Top Speed" value="topSpeed" />
@@ -104,49 +150,15 @@ export function LeaderboardScreen({ navigation, userId }) {
             <FlatList
                 keyExtractor={({ userId }) => userId}
                 data={allUsers}
-                renderItem={({ item, index }) => {
-                    const backgroundColorMap = {
-                        0: 'gold',
-                        1: 'silver',
-                        2: 'bronze',
-                    };
-                    let backgroundColor = backgroundColorMap[index] || '#ddd';
-                    return (
-                        <View style={{ ...styles.line, borderTopWidth: index === 0 ? 1 : 0 }}>
-                            <TouchableHighlight
-                                onPress={() => {
-                                    if (item.userId === userId) {
-                                        navigation.navigate('My History');
-                                    } else {
-                                        navigation.navigate('User History', {
-                                            userId: item.userId,
-                                            displayName: item.displayName,
-                                        });
-                                    }
-                                }}
-                                underlayColor="lightgrey"
-                            >
-                                <View style={styles.leaderboardItem}>
-                                    <View style={styles.leaderboardNameAndRank}>
-                                        <Text
-                                            style={{
-                                                ...styles.leaderboardRank,
-                                                backgroundColor,
-                                            }}
-                                        >
-                                            {index + 1}
-                                        </Text>
-                                        <Text style={styles.leaderboardItemHeading}>{item.displayName}</Text>
-                                    </View>
-                                    <View style={styles.leaderboardNameAndRank}>
-                                        <Text style={styles.leaderboardItemLabel}>{item[sortBy]}</Text>
-                                        <ChevronRight />
-                                    </View>
-                                </View>
-                            </TouchableHighlight>
-                        </View>
-                    );
-                }}
+                renderItem={({ item, index }) => (
+                    <LeaderBoardItem
+                        navigation={navigation}
+                        item={item}
+                        index={index}
+                        sortCat={sortCat}
+                        userId={userId}
+                    />
+                )}
             />
         </View>
     );

@@ -1,35 +1,39 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 
-const StopWatch = ({ running, getTime }) => {
-    const [seconds, setSeconds] = useState(58);
-    const [minutes, setMinutes] = useState(0);
-    const [hours, setHours] = useState(0);
+function secondsToTime(seconds) {
+    let secondsCopy = seconds;
+
+    const hours = Math.floor(secondsCopy / 3600);
+    secondsCopy = secondsCopy % 3600;
+    const minutes = Math.floor(secondsCopy / 60);
+    secondsCopy = secondsCopy % 60;
+    const secs = secondsCopy;
+    return [hours, minutes, secs].map((n) => n.toString().padStart(2, '0')).join(':');
+}
+
+const StopWatch = ({ shouldRun, getTime }) => {
+    const [seconds, setSeconds] = useState(0);
     const [timer, setTimer] = useState(null);
 
     useEffect(() => {
-        if (running) {
+      console.log(shouldRun);
+        if (shouldRun) {
             startClickedHandler();
         } else {
             pauseClickedHandler();
         }
-    }, [running]);
+        return function () {
+            clearInterval(timer);
+        };
+    }, [shouldRun]);
 
     const startClickedHandler = () => {
         const interval = setInterval(() => {
+            if (getTime) {
+                getTime(secondsToTime(seconds + 1));
+            }
             setSeconds((prevSeconds) => {
-                if (prevSeconds === 59) {
-                    setMinutes((prevMinutes) => {
-                        if (prevMinutes === 59) {
-                            setHours((prevHours) => {
-                                return prevHours + 1;
-                            });
-                            return 0;
-                        }
-                        return prevMinutes + 1;
-                    });
-                    return 0;
-                }
                 return prevSeconds + 1;
             });
         }, 1000);
@@ -39,36 +43,27 @@ const StopWatch = ({ running, getTime }) => {
     const pauseClickedHandler = () => {
         if (timer) {
             clearInterval(timer);
-            setHours(0);
-            setMinutes(59);
-            setSeconds(58);
         }
     };
 
-    const timeFormatted = `${('0' + hours).slice(-2)}:${('0' + minutes).slice(-2)}:${('0' + seconds).slice(-2)}`;
-
-    if (getTime) {
-        getTime(timeFormatted);
-    }
-
     return (
         <View style={styles.container}>
-            <Text style={styles.time}>{timeFormatted}</Text>
+            <Text style={styles.time}>{secondsToTime(seconds)}</Text>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
         width: '100%',
         alignItems: 'center',
-        flex: 1,
         justifyContent: 'flex-start',
     },
     time: {
-      marginVertical: 15,
-      fontSize: 25
-    }
+        marginVertical: 15,
+        fontSize: 25,
+    },
 });
 
 export default StopWatch;

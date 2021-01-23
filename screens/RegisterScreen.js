@@ -24,14 +24,16 @@ export const RegisterScreen = ({ navigation, userExists }) => {
             <Input label="Last Name" autoCorrect={false} value={lastName} onChangeText={(text) => setLastName(text)} />
             <TouchableOpacity
                 onPress={() => {
+                    const displayName = `${firstName} ${lastName}`;
                     if (firstName !== '' && lastName !== '') {
                         firebase
                             .auth()
                             .signInAnonymously()
                             .then(() => {
                                 const curUser = firebase.auth().currentUser;
-                                curUser.updateProfile({
-                                        displayName: `${firstName} ${lastName}`,
+                                curUser
+                                    .updateProfile({
+                                        displayName,
                                     })
                                     .then((res) => {
                                         firebase
@@ -39,7 +41,7 @@ export const RegisterScreen = ({ navigation, userExists }) => {
                                             .collection('users')
                                             .doc(curUser.uid)
                                             .set({
-                                                displayName: `${firstName} ${lastName}`,
+                                                displayName,
                                             })
                                             .then((res) => {
                                                 navigation.replace('Trails');
@@ -54,7 +56,7 @@ export const RegisterScreen = ({ navigation, userExists }) => {
                             })
                             .catch((err) => console.log(err));
                     } else {
-                        alert('Please enter a valid name.');
+                        alert('Please complete both fields.');
                     }
                 }}
                 style={styles.submitBtn}
