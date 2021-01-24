@@ -142,3 +142,18 @@ export const combineDurations = function (durationOne = '00:00:00', durationTwo 
         })
         .join(':');
 };
+
+export const getCurrentTime = () => {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+
+    let hours = today.getHours();
+    let minutes = today.getMinutes();
+    const ampm = hours > 11 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    return [`${hours}:${minutes} ${ampm}`, `${mm}/${dd}/${yyyy}`];
+};
