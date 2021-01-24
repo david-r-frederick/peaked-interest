@@ -54,14 +54,15 @@ export function RecordScreen({ route, userId, displayName, navigation, temperatu
                         duration: totalDuration,
                         distance: length,
                         temperature: temp,
-                        topSpeed: Math.max(...speeds).toFixed(1),
-                        avgSpeed: (speeds.reduce((x, y) => x + y) / speeds.length).toFixed(1),
+                        topSpeed: parseFloat(Math.max(...speeds).toFixed(1)),
+                        avgSpeed: parseFloat((speeds.reduce((x, y) => x + y) / speeds.length).toFixed(1)),
                         difficulty,
-                        verticalDrop: (startAltitude - hPaToFeet(currentPressure)).toFixed(2),
+                        verticalDrop: parseFloat((startAltitude - hPaToFeet(currentPressure)).toFixed(2)),
                     })
                     .then(() => {
                         navigation.navigate('My History');
-                    });
+                    })
+                    .catch((err) => console.log(err));
             };
 
             axios
@@ -85,7 +86,7 @@ export function RecordScreen({ route, userId, displayName, navigation, temperatu
             setCurrentPressure(pressure);
             setStartAltitude(hPaToFeet(pressure));
         });
-        let removePromise = Location.watchPositionAsync(
+        const removePromise = Location.watchPositionAsync(
             {
                 accuracy: Location.Accuracy.BestForNavigation,
                 timeInterval: 1000,

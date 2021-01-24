@@ -21,21 +21,21 @@ const unitsMap = {
 
 const LeaderBoardItem = ({ navigation, item, index, sortCat, userId }) => {
     let backgroundColor = backgroundColorMap[index] || '#ddd';
+
+    const itemClickHandler = () => {
+        if (item.userId === userId) {
+            navigation.navigate('My History');
+        } else {
+            navigation.navigate('User History', {
+                userId: item.userId,
+                displayName: item.displayName,
+            });
+        }
+    };
+
     return (
-        <View style={{ ...styles.line, borderTopWidth: index === 0 ? 1 : 0 }}>
-            <TouchableHighlight
-                onPress={() => {
-                    if (item.userId === userId) {
-                        navigation.navigate('My History');
-                    } else {
-                        navigation.navigate('User History', {
-                            userId: item.userId,
-                            displayName: item.displayName,
-                        });
-                    }
-                }}
-                underlayColor="lightgrey"
-            >
+        <View style={{ ...styles.line, borderTopWidth: index ? 0 : 1 }}>
+            <TouchableHighlight onPress={itemClickHandler} underlayColor="lightgrey">
                 <View style={styles.leaderboardItem}>
                     <View style={styles.leaderboardNameAndRank}>
                         <Text
@@ -81,41 +81,58 @@ export function LeaderboardScreen({ navigation, userId }) {
                 userIds = [...new Set(userIds)];
                 const usersWithMaxes = userIds.map((userId) => {
                     const thisUsersData = allRuns.filter((runObj) => runObj.userId === userId);
-                    const displayName = thisUsersData[0].userName;
-                    let totalDuration = '00:00:00';
-                    let largestVerticalDrop = parseFloat(thisUsersData[0].verticalDrop);
-                    let totalDistance = 0;
-                    let topSpeedEver = 0;
-                    let avgSpeedAll =
-                        thisUsersData.map((userData) => userData.avgSpeed).reduce((x, y) => x + y) /
-                        thisUsersData.length;
-                    for (let i = 0; i < thisUsersData.length; i++) {
-                        const { duration, verticalDrop, distance, topSpeed } = thisUsersData[i];
-                        totalDuration = combineDurations(totalDuration, duration);
-                        const floatVerticalDrop = parseFloat(verticalDrop);
-                        if (floatVerticalDrop > largestVerticalDrop) {
-                            largestVerticalDrop = floatVerticalDrop;
+                    const leaderboardData = thisUsersData.reduce(
+                        (acc, cur) => {
+                            return {
+                                ...acc,
+                                totalDuration: combineDurations(cur.duration, acc.totalDuration),
+                                totalDistance: acc.totalDistance + cur.distance,
+                                topSpeed: cur.topSpeed > acc.topSpeed ? cur.topSpeed : acc.topSpeed,
+                                avgSpeed: acc.avgSpeed + cur.avgSpeed,
+                                largestVerticalDrop:
+                                    cur.verticalDrop > acc.largestVerticalDrop
+                                        ? cur.verticalDrop
+                                        : acc.largestVerticalDrop,
+                            };
+                        },
+                        {
+                            displayName: thisUsersData[0].userName,
+                            userId,
+                            totalDuration: '00:00:00',
+                            totalDistance: 0,
+                            largestVerticalDrop: 0,
+                            topSpeed: 0,
+                            avgSpeed: 0,
                         }
-                        totalDistance += parseFloat(distance);
-                        const floatTopSpeed = parseFloat(topSpeed);
-                        if (floatTopSpeed > topSpeedEver) {
-                            topSpeedEver = floatTopSpeed;
-                        }
-                    }
+                    );
 
                     return {
-                        displayName,
-                        userId,
-                        totalDuration,
-                        totalDistance,
-                        largestVerticalDrop,
-                        topSpeed: topSpeedEver.toFixed(1),
-                        avgSpeed: avgSpeedAll,
+                        ...leaderboardData,
+                        avgSpeed: parseFloat((leaderboardData.avgSpeed / thisUsersData.length).toFixed(1)),
                     };
                 });
-                setAllUsers([...usersWithMaxes]);
+                setAllUsers(usersWithMaxes);
             });
     }, []);
+
+    const pickerHandler = (sortCat) => {
+        setSortCat(sortCat);
+        setAllUsers([
+            ...allUsers.sort((x, y) => {
+                if (sortCat !== 'totalDuration') {
+                    return parseFloat(y[sortCat]) - parseFloat(x[sortCat]);
+                }
+                const xTotalDurationSplit = x.totalDuration.split(':').map((n) => +n);
+                const yTotalDurationSplit = y.totalDuration.split(':').map((n) => +n);
+                for (let i = 0; i < 3; i++) {
+                    if (xTotalDurationSplit[i] !== yTotalDurationSplit[i]) {
+                        return yTotalDurationSplit[i] - xTotalDurationSplit[i];
+                    }
+                }
+                return 0;
+            }),
+        ]);
+    };
 
     return (
         <View style={styles.screen}>
@@ -125,26 +142,8 @@ export function LeaderboardScreen({ navigation, userId }) {
                     style={styles.picker}
                     itemStyle={styles.pickerOption}
                     mode="dropdown"
-                    dropdownIconColor="#dddddd"
-                    onValueChange={(sortCat) => {
-                        setSortCat(sortCat);
-                        setAllUsers([
-                            ...allUsers.sort((x, y) => {
-                                if (sortCat !== 'totalDuration') {
-                                    return parseFloat(y[sortCat]) - parseFloat(x[sortCat]);
-                                } else {
-                                    const xTotalDurationSplit = x.totalDuration.split(':').map((n) => +n);
-                                    const yTotalDurationSplit = y.totalDuration.split(':').map((n) => +n);
-                                    for (let i = 0; i < 3; i++) {
-                                        if (xTotalDurationSplit[i] !== yTotalDurationSplit[i]) {
-                                            return yTotalDurationSplit[i] - xTotalDurationSplit[i];
-                                        }
-                                    }
-                                    return 0;
-                                }
-                            }),
-                        ]);
-                    }}
+                    dropdownIconColor="#010101"
+                    onValueChange={pickerHandler}
                 >
                     <Picker.Item label="Top Speed" value="topSpeed" />
                     <Picker.Item label="Average Speed" value="avgSpeed" />
