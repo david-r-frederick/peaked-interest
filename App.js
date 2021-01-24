@@ -95,7 +95,7 @@ function TabNavigator({ temperature, user, trailsHistory }) {
                 <Tab.Screen
                     options={{
                         tabBarIcon: ({ color, size }) => {
-                            return <Entypo name="back-in-time" color={color} size={30} />;
+                            return <Entypo name="back-in-time" size={30} color={color} />;
                         },
                     }}
                     name="My History"
@@ -141,20 +141,22 @@ export default function App() {
             });
         }
 
-        const db = firebase.firestore().collection('runs');
-        db.onSnapshot((querySnapshot) => {
-            const allTrails = [];
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                allTrails.push({
-                    ...data,
-                    id: doc.id,
+        firebase
+            .firestore()
+            .collection('runs')
+            .onSnapshot((querySnapshot) => {
+                const allTrails = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    allTrails.push({
+                        ...data,
+                        id: doc.id,
+                    });
                 });
+                if (allTrails.length !== trailsHistory.length) {
+                    setTrailsHistory(allTrails);
+                }
             });
-            if (allTrails.length !== trailsHistory.length) {
-                setTrailsHistory(allTrails);
-            }
-        });
 
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
@@ -170,7 +172,7 @@ export default function App() {
                 setTemperature(`${response.data.current.temp} °F`);
             })
             .catch((err) => {
-                alert(err.message);
+                console.log(err.message);
                 setTemperature('Unknown');
             });
     }, []);

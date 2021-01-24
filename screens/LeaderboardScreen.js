@@ -13,6 +13,7 @@ const backgroundColorMap = {
 
 const unitsMap = {
     topSpeed: 'mph',
+    avgSpeed: 'mph',
     largestVerticalDrop: 'ft',
     totalDistance: 'mi',
     totalDuration: '',
@@ -85,6 +86,9 @@ export function LeaderboardScreen({ navigation, userId }) {
                     let largestVerticalDrop = parseFloat(thisUsersData[0].verticalDrop);
                     let totalDistance = 0;
                     let topSpeedEver = 0;
+                    let avgSpeedAll =
+                        thisUsersData.map((userData) => userData.avgSpeed).reduce((x, y) => x + y) /
+                        thisUsersData.length;
                     for (let i = 0; i < thisUsersData.length; i++) {
                         const { duration, verticalDrop, distance, topSpeed } = thisUsersData[i];
                         totalDuration = combineDurations(totalDuration, duration);
@@ -106,6 +110,7 @@ export function LeaderboardScreen({ navigation, userId }) {
                         totalDistance,
                         largestVerticalDrop,
                         topSpeed: topSpeedEver.toFixed(1),
+                        avgSpeed: avgSpeedAll,
                     };
                 });
                 setAllUsers([...usersWithMaxes]);
@@ -142,6 +147,7 @@ export function LeaderboardScreen({ navigation, userId }) {
                     }}
                 >
                     <Picker.Item label="Top Speed" value="topSpeed" />
+                    <Picker.Item label="Average Speed" value="avgSpeed" />
                     <Picker.Item label="Total Duration Skiing" value="totalDuration" />
                     <Picker.Item label="Largest Vertical Drop" value="largestVerticalDrop" />
                     <Picker.Item label="Total Distance" value="totalDistance" />

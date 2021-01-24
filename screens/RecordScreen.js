@@ -55,7 +55,7 @@ export function RecordScreen({ route, userId, displayName, navigation, temperatu
                         distance: length,
                         temperature: temp,
                         topSpeed: Math.max(...speeds).toFixed(1),
-                        avgSpeed: speeds.reduce((x, y) => x + y) / speeds.length,
+                        avgSpeed: (speeds.reduce((x, y) => x + y) / speeds.length).toFixed(1),
                         difficulty,
                         verticalDrop: (startAltitude - hPaToFeet(currentPressure)).toFixed(2),
                     })
