@@ -67,7 +67,7 @@ export function RecordScreen({ route, userId, displayName, navigation, temperatu
 
             axios
                 .get(
-                    `https://api.openweathermap.org/data/2.5/onecall?lat=39.5792&lon=105.9347&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
+                    `https://api.openweathermap.org/data/2.5/onecall?lat=39.6064085&lon=-105.9462657&units=imperial&appid=da9156d2392f013a7e000b4e71847f75`
                 )
                 .then((response) => {
                     setTemperature(response.data.current.temp);
